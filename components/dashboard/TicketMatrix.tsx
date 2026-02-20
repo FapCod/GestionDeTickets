@@ -187,17 +187,16 @@ export default function TicketMatrix({
                                 {/* Release Select */}
                                 <TableCell>
                                     <Select
-                                        defaultValue={ticket.release_id || 'unassigned'}
-                                        onValueChange={(val) => handleStatusChange(ticket.id, 'release_id', val === 'unassigned' ? null : val)}
+                                        defaultValue={ticket.release_id}
+                                        onValueChange={(val) => handleStatusChange(ticket.id, 'release_id', val)}
                                     >
                                         <SelectTrigger className="h-8">
                                             <SelectValue placeholder="Release" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="unassigned">Sin Asignar</SelectItem>
                                             {releases.map(r => (
                                                 <SelectItem key={r.id} value={r.id} disabled={!r.active}>
-                                                    {r.name} {r.developers?.name && `(${r.developers.name})`} {!r.active && '(Inactivo)'}
+                                                    {r.name} {!r.active && '(Inactivo)'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>

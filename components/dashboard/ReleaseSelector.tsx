@@ -32,7 +32,7 @@ export function ReleaseSelector({ releases, currentReleaseId }: { releases: any[
             <SelectContent>
                 {releases.map(r => (
                     <SelectItem key={r.id} value={r.id}>
-                        {r.name} {r.developers?.name && `(${r.developers.name})`} {r.active ? '(Active)' : ''}
+                        {r.name} {r.active ? '(Active)' : ''}
                     </SelectItem>
                 ))}
             </SelectContent>
