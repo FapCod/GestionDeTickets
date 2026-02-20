@@ -34,18 +34,21 @@ export interface Database {
                     id: string
                     name: string
                     module_id: string
+                    sort_order: number
                     created_at: string
                 }
                 Insert: {
                     id?: string
                     name: string
                     module_id: string
+                    sort_order: number
                     created_at?: string
                 }
                 Update: {
                     id?: string
                     name?: string
                     module_id?: string
+                    sort_order?: number
                     created_at?: string
                 }
             }

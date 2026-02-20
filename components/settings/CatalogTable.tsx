@@ -28,7 +28,25 @@ import {
 import { useForm, Controller } from 'react-hook-form'
 import { createCatalogItem, updateCatalogItem, deleteCatalogItem } from '@/actions/catalogs'
 import { toast } from 'sonner'
-import { Pencil, Trash2, Plus } from 'lucide-react'
+import { Pencil, Trash2, Plus, GripVertical, Check, X, MoveVertical } from 'lucide-react'
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core'
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 
 export interface Column {
     key: string
@@ -48,11 +66,17 @@ interface CatalogTableProps {
         update: (id: string, data: any) => Promise<any>
         delete: (id: string) => Promise<any>
     }
+    enableReordering?: boolean
+    onReorder?: (orderedData: any[]) => Promise<any>
 }
 
-export default function CatalogTable({ data, columns, tableName, title, customActions }: CatalogTableProps) {
+export default function CatalogTable({ data, columns, tableName, title, customActions, enableReordering, onReorder }: CatalogTableProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<any | null>(null)
+
+    // Reordering State
+    const [isReordering, setIsReordering] = useState(false)
+    const [reorderData, setReorderData] = useState<any[]>([])
 
     // Pagination & Filtering State
     const [currentPage, setCurrentPage] = useState(1)
@@ -72,6 +96,14 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
     const startIndex = (currentPage - 1) * itemsPerPage
     const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
 
+    // DND Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    )
+
     const handleDelete = async (id: string) => {
         if (!confirm('¿Estás seguro de eliminar este elemento?')) return
         const res = await deleteCatalogItem(tableName, id, '/settings/' + tableName)
@@ -87,6 +119,46 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
         setCurrentPage(1) // Reset to first page on filter change
     }
 
+    const startReordering = () => {
+        // Reordering only makes sense if we have a module filter active for components
+        if (tableName === 'components' && (!filters.module_id || filters.module_id === 'all')) {
+            toast.warning('Primero debes seleccionar un módulo para poder reordenar los componentes.')
+            return
+        }
+        setReorderData([...filteredData])
+        setIsReordering(true)
+    }
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+
+        if (over && active.id !== over.id) {
+            setReorderData((items) => {
+                const oldIndex = items.findIndex(i => i.id === active.id)
+                const newIndex = items.findIndex(i => i.id === over.id)
+                return arrayMove(items, oldIndex, newIndex)
+            })
+        }
+    }
+
+    const saveReorder = async () => {
+        if (!onReorder) return
+
+        // Map to include sort_order
+        const orderedItems = reorderData.map((item, index) => ({
+            id: item.id,
+            sort_order: index + 1
+        }))
+
+        const res = await onReorder(orderedItems)
+        if (res.error) {
+            toast.error(res.error)
+        } else {
+            toast.success('Orden actualizado')
+            setIsReordering(false)
+        }
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex flex-col gap-4 bg-card p-4 rounded-lg border md:flex-row md:items-center md:justify-between">
@@ -96,7 +168,7 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
                     {/* Dynamic Filters */}
-                    {columns.filter(col => col.filterable && (col.type === 'select' || col.type === 'multi-select')).map(col => (
+                    {!isReordering && columns.filter(col => col.filterable && (col.type === 'select' || col.type === 'multi-select')).map(col => (
                         <Select key={col.key} onValueChange={(val) => handleFilterChange(col.key, val)}>
                             <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder={`Filtrar por ${col.label}`} />
@@ -110,84 +182,120 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
                         </Select>
                     ))}
 
-                    <Button onClick={() => { setEditingItem(null); setIsOpen(true) }}>
-                        <Plus className="mr-2 h-4 w-4" /> Nuevo
-                    </Button>
+                    {enableReordering && !isReordering && (
+                        <Button variant="outline" onClick={startReordering}>
+                            <MoveVertical className="mr-2 h-4 w-4" /> Reordenar
+                        </Button>
+                    )}
+
+                    {isReordering && (
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setIsReordering(false)}>
+                                <X className="mr-2 h-4 w-4" /> Cancelar
+                            </Button>
+                            <Button size="sm" onClick={saveReorder}>
+                                <Check className="mr-2 h-4 w-4" /> Guardar Orden
+                            </Button>
+                        </div>
+                    )}
+
+                    {!isReordering && (
+                        <Button onClick={() => { setEditingItem(null); setIsOpen(true) }}>
+                            <Plus className="mr-2 h-4 w-4" /> Nuevo
+                        </Button>
+                    )}
                 </div>
             </div>
 
-            <div className="rounded-md border bg-card w-full max-w-[85vw] sm:max-w-full">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {columns.map((col) => (
-                                <TableHead key={col.key}>{col.label}</TableHead>
-                            ))}
-                            <TableHead className="w-[100px]">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {paginatedData.length > 0 ? (
-                            paginatedData.map((row) => (
-                                <TableRow key={row.id}>
-                                    {columns.map((col) => {
-                                        if (col.type === 'color') {
-                                            return (
-                                                <TableCell key={col.key}>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: row[col.key] }}></div>
-                                                        {row[col.key]}
-                                                    </div>
-                                                </TableCell>
-                                            )
-                                        }
-                                        if (col.type === 'select') {
-                                            const option = col.options?.find(o => o.value === row[col.key])
-                                            return <TableCell key={col.key}>{option ? option.label : row[col.key]}</TableCell>
-                                        }
-                                        if (col.type === 'multi-select') {
-                                            const values = Array.isArray(row[col.key]) ? row[col.key] : []
-                                            return (
-                                                <TableCell key={col.key}>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {values.map((val: string) => {
-                                                            const option = col.options?.find(o => o.value === val)
-                                                            return (
-                                                                <span key={val} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
-                                                                    {option ? option.label : val}
-                                                                </span>
-                                                            )
-                                                        })}
-                                                    </div>
-                                                </TableCell>
-                                            )
-                                        }
-                                        return <TableCell key={col.key}>{row[col.key]}</TableCell>
-                                    })}
-                                    <TableCell className="flex gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => { setEditingItem(row); setIsOpen(true) }}>
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(row.id)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+            <div className="rounded-md border bg-card w-full max-w-[85vw] sm:max-w-full overflow-hidden">
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[restrictToVerticalAxis]}
+                >
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                {isReordering && <TableHead className="w-[40px]"></TableHead>}
+                                {columns.map((col) => (
+                                    <TableHead key={col.key}>{col.label}</TableHead>
+                                ))}
+                                {!isReordering && <TableHead className="w-[100px]">Acciones</TableHead>}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isReordering ? (
+                                <SortableContext
+                                    items={reorderData.map(i => i.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {reorderData.map((row) => (
+                                        <SortableRow key={row.id} row={row} columns={columns} />
+                                    ))}
+                                </SortableContext>
+                            ) : paginatedData.length > 0 ? (
+                                paginatedData.map((row) => (
+                                    <TableRow key={row.id}>
+                                        {columns.map((col) => {
+                                            if (col.type === 'color') {
+                                                return (
+                                                    <TableCell key={col.key}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-4 h-4 rounded-full border" style={{ backgroundColor: row[col.key] }}></div>
+                                                            {row[col.key]}
+                                                        </div>
+                                                    </TableCell>
+                                                )
+                                            }
+                                            if (col.type === 'select') {
+                                                const option = col.options?.find(o => o.value === row[col.key])
+                                                return <TableCell key={col.key}>{option ? option.label : row[col.key]}</TableCell>
+                                            }
+                                            if (col.type === 'multi-select') {
+                                                const values = Array.isArray(row[col.key]) ? row[col.key] : []
+                                                return (
+                                                    <TableCell key={col.key}>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {values.map((val: string) => {
+                                                                const option = col.options?.find(o => o.value === val)
+                                                                return (
+                                                                    <span key={val} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
+                                                                        {option ? option.label : val}
+                                                                    </span>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </TableCell>
+                                                )
+                                            }
+                                            return <TableCell key={col.key}>{row[col.key]}</TableCell>
+                                        })}
+                                        <TableCell className="flex gap-2">
+                                            <Button variant="ghost" size="icon" onClick={() => { setEditingItem(row); setIsOpen(true) }}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(row.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={columns.length + (isReordering ? 1 : 1)} className="h-24 text-center">
+                                        Sin resultados.
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={columns.length + 1} className="h-24 text-center">
-                                    Sin resultados.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                            )}
+                        </TableBody>
+                    </Table>
+                </DndContext>
             </div>
 
             {/* Pagination Controls */}
             {
-                totalPages > 1 && (
+                !isReordering && totalPages > 1 && (
                     <div className="flex items-center justify-end space-x-2 py-4">
                         <Button
                             variant="outline"
@@ -227,6 +335,42 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
                 </DialogContent>
             </Dialog>
         </div >
+    )
+}
+
+function SortableRow({ row, columns }: { row: any, columns: Column[] }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: row.id })
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : 1,
+        position: 'relative' as const,
+        opacity: isDragging ? 0.5 : 1,
+    }
+
+    return (
+        <TableRow ref={setNodeRef} style={style}>
+            <TableCell className="w-[40px]">
+                <Button variant="ghost" size="icon" className="cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                </Button>
+            </TableCell>
+            {columns.map((col) => {
+                if (col.type === 'select') {
+                    const option = col.options?.find(o => o.value === row[col.key])
+                    return <TableCell key={col.key}>{option ? option.label : row[col.key]}</TableCell>
+                }
+                return <TableCell key={col.key}>{row[col.key]}</TableCell>
+            })}
+        </TableRow>
     )
 }
 
@@ -342,3 +486,4 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActio
         </form>
     )
 }
+

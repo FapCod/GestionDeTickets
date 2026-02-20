@@ -24,7 +24,7 @@ export default async function ModuleDashboard({ params, searchParams }: { params
     ] = await Promise.all([
         supabase.from('modules').select('*').eq('id', moduleId).single(),
         getReleases(moduleId),
-        supabase.from('components').select('*').eq('module_id', moduleId).order('name'),
+        supabase.from('components').select('*').eq('module_id', moduleId).order('sort_order', { ascending: true }),
         getCatalog('statuses'),
         getCatalog('developers'),
         getCatalog('teams'),
