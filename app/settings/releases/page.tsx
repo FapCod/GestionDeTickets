@@ -14,8 +14,9 @@ export default async function ReleasesPage() {
             type: 'select',
             options: modules.map((m: any) => ({ label: m.name, value: m.id }))
         },
-        { key: 'start_date', label: 'Start Date', type: 'text' },
-        { key: 'end_date', label: 'End Date', type: 'text' },
+        { key: 'start_date', label: 'Start Date', type: 'date' },
+        { key: 'end_date', label: 'End Date', type: 'date' },
+        { key: 'responsible', label: 'Responsible', type: 'text' },
         {
             key: 'active',
             label: 'Active',

@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Release Tracking Dashboard 🚀
 
-## Getting Started
+This project is a **Release Tracking Dashboard** designed to replace spreadsheet-based tracking. It provides a dynamic, responsive interface for managing software releases, tracking tickets across components, and coordinating developer assignments.
 
-First, run the development server:
+## 🛠️ Technology Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+-   **Framework**: [Next.js 14+](https://nextjs.org/) (App Router, Server Actions)
+-   **Language**: [TypeScript](https://www.typescriptlang.org/)
+-   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+-   **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
+-   **Database**: [Supabase](https://supabase.com/) (PostgreSQL)
+-   **Icons**: [Lucide React](https://lucide.dev/)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Key Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 📊 Main Dashboard
+-   **Dynamic Matrix**: Interactive pivot table tracking Tickets vs. Components.
+-   **Status Toggle**: Clickable cells to toggle "APLICA" / "NO APLICA" status for components per ticket.
+-   **Release Context**: Filter tickets and matrix data by specific Releases.
+-   **Real-time Updates**: Visual feedback using color-coded chips for ticket statuses (QA, Dev, etc.).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### ⚙️ Admin Panel (Settings)
+-   **Catalog Management**: Full CRUD (Create, Read, Update, Delete) capability for:
+    -   Modules
+    -   Components
+    -   Teams
+    -   Developers (scoped to Modules)
+    -   Environments
+    -   Statuses
+-   **Release Management**: Specialized interface to manage Releases with start/end dates and "Active" status.
 
-## Learn More
+### 📱 Responsive Design
+-   **Mobile-First**: Fully optimized layouts for mobile devices.
+-   **Smart Tables**: Horizontally scrollable tables on smaller screens to prevent layout breakage.
+-   **Adaptive Headers**: Headers that stack gracefully on mobile.
 
-To learn more about Next.js, take a look at the following resources:
+### 🔒 Authentication & Security
+-   **Supabase Auth**: Secure email/password login.
+-   **Middleware Protection**: Route guards preventing unauthorized access to dashboard and settings.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🗄️ Database Schema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+ The system is built on a relational PostgreSQL schema (Supabase):
 
-## Deploy on Vercel
+-   **`modules`**: Core functional areas of the application.
+-   **`releases`**: Linked to Modules, defining release cycles.
+-   **`tickets`**: Work items linked to statuses, teams, developers, and environments.
+-   **`components`**: Technical pieces belonging to a Module.
+-   **`ticket_component_matrix`**: The intersection table defining which components are affected by which ticket.
+-   **`developers`**: Pivot table associating developers with specific Modules.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚀 Getting Started
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1.  **Clone the repository**
+    ```bash
+    git clone [repository-url]
+    cd [project-name]
+    ```
+
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Environment Setup**
+    Create a `.env.local` file in the root directory:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
+
+4.  **Database Setup**
+    Run the SQL scripts located in `.gemini/` in your Supabase SQL Editor in the following order:
+    1.  `01_init_schema.sql` (Tables & Relations)
+    2.  `02_seed_data.sql` (Initial Data)
+    3.  `05_developers_modules.sql` (Developer scoping)
+    4.  `06_add_responsible_to_releases.sql` (Release enhancements)
+
+5.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+
+    Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+## 📂 Project Structure
+
+-   `/app`: Next.js App Router pages and layouts.
+    -   `/dashboard`: Main matrix view.
+    -   `/settings`: Admin catalogs.
+    -   `/login`: Authentication.
+-   `/components`: Reusable UI components (shadcn/ui + custom).
+-   `/actions`: Server Actions for database mutations.
+-   `/lib`: Utility functions and Supabase clients.
+-   `/types`: TypeScript definitions.
+
+## 🤝 Contribution
+
+1.  Create a feature branch.
+2.  Commit your changes.
+3.  Push to the branch.
+4.  Open a Pull Request.
+
+---
+*Generated by Antigravity*

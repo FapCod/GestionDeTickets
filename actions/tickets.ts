@@ -3,12 +3,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function getTickets() {
+export async function getTickets(releaseId?: string) {
     const supabase = await createClient()
 
-    // Fetch tickets with all related data (status, dev, team, etc)
-    // note: supabase-js joins syntax
-    const { data, error } = await supabase
+    // Base query
+    let query = supabase
         .from('tickets')
         .select(`
       *,
@@ -20,6 +19,16 @@ export async function getTickets() {
       releases (id, name)
     `)
         .order('created_at', { ascending: false })
+
+    // Apply filter if releaseId is provided
+    if (releaseId) {
+        query = query.eq('release_id', releaseId)
+    } else if (releaseId === null) {
+        // Explicitly fetch tickets with NO release if null is passed (optional, depending on usage)
+        query = query.is('release_id', null)
+    }
+
+    const { data, error } = await query
 
     if (error) {
         console.error('Error fetching tickets:', error)

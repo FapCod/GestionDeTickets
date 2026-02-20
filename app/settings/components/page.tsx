@@ -2,8 +2,10 @@ import CatalogTable, { Column } from '@/components/settings/CatalogTable'
 import { getCatalog } from '@/actions/catalogs'
 
 export default async function ComponentsPage() {
-    const components = await getCatalog('components') || []
-    const modules = await getCatalog('modules') || []
+    const [components, modules] = await Promise.all([
+        getCatalog('components') || [],
+        getCatalog('modules') || []
+    ])
 
     // Create options for module select
     const moduleOptions = modules.map((m: any) => ({
@@ -17,7 +19,8 @@ export default async function ComponentsPage() {
             key: 'module_id',
             label: 'Module',
             type: 'select',
-            options: moduleOptions
+            options: moduleOptions,
+            filterable: true
         }
     ]
 
