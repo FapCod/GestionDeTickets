@@ -32,6 +32,17 @@ import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
 interface TicketMatrixProps {
     tickets: any[]
     components: any[]
@@ -56,6 +67,10 @@ export default function TicketMatrix({
     defaultReleaseId
 }: TicketMatrixProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
+
+    // Delete confirmation state
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null)
 
     // Optimistic UI for Matrix
     const [optimisticMatrix, setOptimisticMatrix] = useOptimistic(
@@ -112,11 +127,22 @@ export default function TicketMatrix({
         if (res.error) toast.error(res.error)
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('¿Eliminar ticket?')) return
-        const res = await deleteTicket(id)
-        if (res.error) toast.error(res.error)
-        else toast.success('Ticket eliminado')
+    const handleDelete = async () => {
+        if (!itemToDelete) return
+
+        const res = await deleteTicket(itemToDelete)
+        if (res.error) {
+            toast.error(res.error)
+        } else {
+            toast.success('Ticket eliminado exitosamente')
+        }
+        setIsDeleteDialogOpen(false)
+        setItemToDelete(null)
+    }
+
+    const openDeleteDialog = (id: string) => {
+        setItemToDelete(id)
+        setIsDeleteDialogOpen(true)
     }
 
     // Helper to get matrix state
@@ -315,7 +341,7 @@ export default function TicketMatrix({
                                 })}
 
                                 <TableCell>
-                                    <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => handleDelete(ticket.id)}>
+                                    <Button variant="ghost" size="icon" className="hover:text-destructive" onClick={() => openDeleteDialog(ticket.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TableCell>
@@ -324,6 +350,25 @@ export default function TicketMatrix({
                     </TableBody>
                 </Table>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Esto eliminará permanentemente el ticket
+                            de nuestra base de datos.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <CreateTicketDialog
                 open={isCreateOpen}

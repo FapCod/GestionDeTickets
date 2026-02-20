@@ -47,6 +47,18 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { cn } from '@/lib/utils'
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export interface Column {
     key: string
@@ -73,6 +85,10 @@ interface CatalogTableProps {
 export default function CatalogTable({ data, columns, tableName, title, customActions, enableReordering, onReorder }: CatalogTableProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<any | null>(null)
+
+    // Delete confirmation state
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null)
 
     // Reordering State
     const [isReordering, setIsReordering] = useState(false)
@@ -104,14 +120,22 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
         })
     )
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('¿Estás seguro de eliminar este elemento?')) return
-        const res = await deleteCatalogItem(tableName, id, '/settings/' + tableName)
+    const handleDelete = async () => {
+        if (!itemToDelete) return
+
+        const res = await deleteCatalogItem(tableName, itemToDelete, '/settings/' + tableName)
         if (res.error) {
             toast.error(res.error)
         } else {
-            toast.success('Elemento eliminado')
+            toast.success('Elemento eliminado exitosamente')
         }
+        setIsDeleteDialogOpen(false)
+        setItemToDelete(null)
+    }
+
+    const openDeleteDialog = (id: string) => {
+        setItemToDelete(id)
+        setIsDeleteDialogOpen(true)
     }
 
     const handleFilterChange = (key: string, value: string) => {
@@ -275,7 +299,7 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
                                             <Button variant="ghost" size="icon" onClick={() => { setEditingItem(row); setIsOpen(true) }}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(row.id)}>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => openDeleteDialog(row.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </TableCell>
@@ -292,6 +316,25 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
                     </Table>
                 </DndContext>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Esto eliminará permanentemente el elemento
+                            seleccionado de nuestra base de datos.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Eliminar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Pagination Controls */}
             {
@@ -476,7 +519,13 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActio
                             )}
                         />
                     ) : (
-                        <Input id={col.key} {...register(col.key)} />
+                        <Input
+                            id={col.key}
+                            {...register(col.key)}
+                            className={cn(
+                                tableName === 'components' && col.key === 'name' && "uppercase"
+                            )}
+                        />
                     )}
                 </div>
             ))}

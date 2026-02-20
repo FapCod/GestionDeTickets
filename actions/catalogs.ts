@@ -30,6 +30,12 @@ export async function getCatalog(table: TableName, orderBy: string = 'created_at
 
 export async function createCatalogItem(table: TableName, data: any, path: string) {
     const supabase = await createClient()
+
+    // Transform name to uppercase for components
+    if (table === 'components' && data.name) {
+        data.name = data.name.toUpperCase()
+    }
+
     const { error } = await supabase.from(table).insert(data)
 
     if (error) {
@@ -43,6 +49,12 @@ export async function createCatalogItem(table: TableName, data: any, path: strin
 
 export async function updateCatalogItem(table: TableName, id: string, data: any, path: string) {
     const supabase = await createClient()
+
+    // Transform name to uppercase for components
+    if (table === 'components' && data.name) {
+        data.name = data.name.toUpperCase()
+    }
+
     const { error } = await supabase.from(table).update(data).eq('id', id)
 
     if (error) {
