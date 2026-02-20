@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useOptimistic, startTransition } from 'react'
 import {
     Table,
     TableBody,
@@ -57,33 +57,71 @@ export default function TicketMatrix({
 }: TicketMatrixProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
 
+    // Optimistic UI for Matrix
+    const [optimisticMatrix, setOptimisticMatrix] = useOptimistic(
+        matrix,
+        (state, updatedEntry: any) => {
+            const existingIndex = state.findIndex((item: any) =>
+                item.ticket_id === updatedEntry.ticket_id && item.component_id === updatedEntry.component_id
+            )
+            if (existingIndex !== -1) {
+                const newState = [...state]
+                newState[existingIndex] = { ...newState[existingIndex], ...updatedEntry }
+                return newState
+            }
+            return [...state, updatedEntry]
+        }
+    )
+
     const handleStatusChange = async (ticketId: string, field: string, value: string | null) => {
         const res = await updateTicket(ticketId, { [field]: value })
         if (res.error) toast.error(res.error)
-        else toast.success('Ticket updated')
+        else toast.success('Ticket actualizado')
     }
 
     const handleToggle = async (ticketId: string, componentId: string, currentApplies: boolean) => {
-        const res = await toggleComponentApplies(ticketId, componentId, !currentApplies)
-        if (res.error) toast.error(res.error)
-        // optimistic update handled by server action revalidate
+        const newApplies = !currentApplies
+
+        startTransition(() => {
+            setOptimisticMatrix({
+                ticket_id: ticketId,
+                component_id: componentId,
+                applies: newApplies
+            })
+        })
+
+        const res = await toggleComponentApplies(ticketId, componentId, newApplies)
+        if (res.error) {
+            toast.error(res.error)
+            // Revert on error? useOptimistic handles revert automatically when parent re-renders, 
+            // but manual revert might be needed if revalidation doesn't happen or fails.
+            // For now, relies on next validation.
+            startTransition(() => {
+                setOptimisticMatrix({
+                    ticket_id: ticketId,
+                    component_id: componentId,
+                    applies: currentApplies // Revert
+                })
+            })
+        }
     }
 
     const handleNotesChange = async (ticketId: string, componentId: string, notes: string) => {
+        // Optimistically update notes too if desired, but focus is on toggle delay
         const res = await updateComponentNotes(ticketId, componentId, notes)
         if (res.error) toast.error(res.error)
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Delete ticket?')) return
+        if (!confirm('¿Eliminar ticket?')) return
         const res = await deleteTicket(id)
         if (res.error) toast.error(res.error)
-        else toast.success('Ticket deleted')
+        else toast.success('Ticket eliminado')
     }
 
     // Helper to get matrix state
     const getMatrixEntry = (ticketId: string, componentId: string) => {
-        return matrix.find(m => m.ticket_id === ticketId && m.component_id === componentId)
+        return optimisticMatrix.find((m: any) => m.ticket_id === ticketId && m.component_id === componentId)
     }
 
     // Filter statuses for dropdowns
@@ -95,7 +133,7 @@ export default function TicketMatrix({
         <div className="space-y-4">
             <div className="flex justify-end">
                 <Button onClick={() => setIsCreateOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> New Ticket
+                    <Plus className="mr-2 h-4 w-4" /> Nuevo Ticket
                 </Button>
             </div>
 
@@ -105,11 +143,11 @@ export default function TicketMatrix({
                         <TableRow>
                             <TableHead className="min-w-[200px]">Ticket</TableHead>
                             <TableHead className="min-w-[140px]">Release</TableHead>
-                            <TableHead className="min-w-[140px]">Status</TableHead>
-                            <TableHead className="min-w-[140px]">QA Status</TableHead>
+                            <TableHead className="min-w-[140px]">Estado</TableHead>
+                            <TableHead className="min-w-[140px]">Estado QA</TableHead>
                             <TableHead className="min-w-[120px]">Dev</TableHead>
-                            <TableHead className="min-w-[120px]">Team</TableHead>
-                            <TableHead className="min-w-[100px]">Env</TableHead>
+                            <TableHead className="min-w-[120px]">Equipo</TableHead>
+                            <TableHead className="min-w-[100px]">Entorno</TableHead>
                             {components.map(c => (
                                 <TableHead key={c.id} className="text-center min-w-[100px] border-l whitespace-nowrap" title={c.name}>
                                     {c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name}
@@ -122,8 +160,28 @@ export default function TicketMatrix({
                         {tickets.map(ticket => (
                             <TableRow key={ticket.id}>
                                 <TableCell>
-                                    <div className="font-medium">{ticket.title}</div>
-                                    <div className="text-xs text-muted-foreground truncate max-w-[200px]">{ticket.description}</div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <Input
+                                            defaultValue={ticket.title}
+                                            className="h-8 font-medium border-transparent hover:border-input focus:border-input px-2 w-full"
+                                            onBlur={(e) => {
+                                                if (e.target.value !== ticket.title) {
+                                                    handleStatusChange(ticket.id, 'title', e.target.value)
+                                                }
+                                            }}
+                                        />
+                                        <Input
+                                            defaultValue={ticket.description || ''}
+                                            className="h-7 text-xs text-muted-foreground border-transparent hover:border-input focus:border-input px-2 truncate w-full"
+                                            onBlur={(e) => {
+                                                const currentDesc = ticket.description || ''
+                                                if (e.target.value !== currentDesc) {
+                                                    handleStatusChange(ticket.id, 'description', e.target.value)
+                                                }
+                                            }}
+                                            placeholder="Sin descripción"
+                                        />
+                                    </div>
                                 </TableCell>
 
                                 {/* Release Select */}
@@ -136,10 +194,10 @@ export default function TicketMatrix({
                                             <SelectValue placeholder="Release" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                                            <SelectItem value="unassigned">Sin Asignar</SelectItem>
                                             {releases.map(r => (
                                                 <SelectItem key={r.id} value={r.id} disabled={!r.active}>
-                                                    {r.name} {!r.active && '(Inactive)'}
+                                                    {r.name} {r.developers?.name && `(${r.developers.name})`} {!r.active && '(Inactivo)'}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -153,7 +211,7 @@ export default function TicketMatrix({
                                         onValueChange={(val) => handleStatusChange(ticket.id, 'status_id', val)}
                                     >
                                         <SelectTrigger className="h-8">
-                                            <SelectValue placeholder="Status" />
+                                            <SelectValue placeholder="Estado" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {ticketStatuses.map(s => (
@@ -200,7 +258,7 @@ export default function TicketMatrix({
 
                                 <TableCell>
                                     <Select defaultValue={ticket.team_id} onValueChange={(val) => handleStatusChange(ticket.id, 'team_id', val)}>
-                                        <SelectTrigger className="h-8"><SelectValue placeholder="Team" /></SelectTrigger>
+                                        <SelectTrigger className="h-8"><SelectValue placeholder="Equipo" /></SelectTrigger>
                                         <SelectContent>
                                             {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                                         </SelectContent>
@@ -227,9 +285,14 @@ export default function TicketMatrix({
                                             <TableCell key={c.id} className="border-l text-center p-1 min-w-[200px]">
                                                 <Textarea
                                                     className="min-h-[60px] text-xs resize-none"
-                                                    placeholder="Add comments..."
+                                                    placeholder="Agregar comentarios..."
                                                     defaultValue={entry?.notes || ''}
-                                                    onBlur={(e) => handleNotesChange(ticket.id, c.id, e.target.value)}
+                                                    onBlur={(e) => {
+                                                        const currentNotes = entry?.notes || ''
+                                                        if (e.target.value !== currentNotes) {
+                                                            handleNotesChange(ticket.id, c.id, e.target.value)
+                                                        }
+                                                    }}
                                                 />
                                             </TableCell>
                                         )
@@ -282,6 +345,13 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const formData = new FormData(e.currentTarget)
+        const releaseId = formData.get('release_id')
+
+        if (!releaseId || releaseId === 'unassigned') {
+            toast.error('El Release es requerido')
+            return
+        }
+
         const data = {
             title: formData.get('title'),
             description: formData.get('description'),
@@ -297,7 +367,7 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
         if (res.error) {
             toast.error(res.error)
         } else {
-            toast.success('Ticket created')
+            toast.success('Ticket creado')
             onOpenChange(false)
         }
     }
@@ -306,26 +376,26 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Create New Ticket</DialogTitle>
+                    <DialogTitle>Crear Nuevo Ticket</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid w-full gap-1.5">
-                        <Label htmlFor="title">Title</Label>
+                        <Label htmlFor="title">Título</Label>
                         <Input id="title" name="title" required />
                     </div>
                     <div className="grid w-full gap-1.5">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description">Descripción</Label>
                         <Input id="description" name="description" />
                     </div>
 
                     <div className="grid gap-1.5">
-                        <Label htmlFor="release_id">Release</Label>
-                        <Select name="release_id" defaultValue={defaultReleaseId}>
-                            <SelectTrigger><SelectValue placeholder="Select Release" /></SelectTrigger>
+                        <Label htmlFor="release_id" className="flex gap-1">Release <span className="text-destructive">*</span></Label>
+                        <Select name="release_id" defaultValue={defaultReleaseId || undefined} required>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar Release" /></SelectTrigger>
                             <SelectContent>
                                 {releases.map((s: any) => (
                                     <SelectItem key={s.id} value={s.id} disabled={!s.active}>
-                                        {s.name} {!s.active && '(Inactive)'}
+                                        {s.name} {!s.active && '(Inactivo)'}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -334,18 +404,18 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="status_id">Status</Label>
+                            <Label htmlFor="status_id">Estado</Label>
                             <Select name="status_id">
-                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                                 <SelectContent>
                                     {statuses.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="qa_status_id">QA Status</Label>
+                            <Label htmlFor="qa_status_id">Estado QA</Label>
                             <Select name="qa_status_id">
-                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                                 <SelectContent>
                                     {qaStatuses.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                 </SelectContent>
@@ -355,18 +425,18 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="dev_id">Developer</Label>
+                            <Label htmlFor="dev_id">Desarrollador</Label>
                             <Select name="dev_id">
-                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                                 <SelectContent>
                                     {developers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="team_id">Team</Label>
+                            <Label htmlFor="team_id">Equipo</Label>
                             <Select name="team_id">
-                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                                 <SelectContent>
                                     {teams.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                 </SelectContent>
@@ -374,9 +444,9 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
                         </div>
                     </div>
                     <div className="grid gap-1.5">
-                        <Label htmlFor="environment_id">Environment</Label>
+                        <Label htmlFor="environment_id">Entorno</Label>
                         <Select name="environment_id">
-                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                             <SelectContent>
                                 {environments.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                             </SelectContent>
@@ -384,7 +454,7 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
                     </div>
 
                     <div className="flex justify-end gap-2 mt-2">
-                        <Button type="submit">Create</Button>
+                        <Button type="submit">Crear</Button>
                     </div>
                 </form>
             </DialogContent>

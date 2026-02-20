@@ -14,10 +14,10 @@ export default async function ComponentsPage() {
     }))
 
     const columns: Column[] = [
-        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'name', label: 'Nombre', type: 'text' },
         {
             key: 'module_id',
-            label: 'Module',
+            label: 'Módulo',
             type: 'select',
             options: moduleOptions,
             filterable: true
@@ -29,7 +29,7 @@ export default async function ComponentsPage() {
             data={components}
             columns={columns}
             tableName="components"
-            title="Components"
+            title="Componentes"
         />
     )
 }

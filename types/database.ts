@@ -126,6 +126,23 @@ export interface Database {
                     created_at?: string
                 }
             }
+            developer_modules: {
+                Row: {
+                    developer_id: string
+                    module_id: string
+                    created_at: string
+                }
+                Insert: {
+                    developer_id: string
+                    module_id: string
+                    created_at?: string
+                }
+                Update: {
+                    developer_id?: string
+                    module_id?: string
+                    created_at?: string
+                }
+            }
             releases: {
                 Row: {
                     id: string
@@ -133,6 +150,7 @@ export interface Database {
                     start_date: string | null
                     end_date: string | null
                     active: boolean | null
+                    responsible_id: string | null
                     created_at: string
                 }
                 Insert: {
@@ -141,6 +159,7 @@ export interface Database {
                     start_date?: string | null
                     end_date?: string | null
                     active?: boolean | null
+                    responsible_id?: string | null
                     created_at?: string
                 }
                 Update: {
@@ -149,6 +168,7 @@ export interface Database {
                     start_date?: string | null
                     end_date?: string | null
                     active?: boolean | null
+                    responsible_id?: string | null
                     created_at?: string
                 }
             }
@@ -162,7 +182,7 @@ export interface Database {
                     dev_id: string | null
                     team_id: string | null
                     environment_id: string | null
-                    release_id: string | null
+                    release_id: string
                     code_freeze: boolean | null
                     created_at: string
                     updated_at: string
@@ -176,7 +196,7 @@ export interface Database {
                     dev_id?: string | null
                     team_id?: string | null
                     environment_id?: string | null
-                    release_id?: string | null
+                    release_id: string
                     code_freeze?: boolean | null
                     created_at?: string
                     updated_at?: string
@@ -190,7 +210,7 @@ export interface Database {
                     dev_id?: string | null
                     team_id?: string | null
                     environment_id?: string | null
-                    release_id?: string | null
+                    release_id?: string
                     code_freeze?: boolean | null
                     created_at?: string
                     updated_at?: string

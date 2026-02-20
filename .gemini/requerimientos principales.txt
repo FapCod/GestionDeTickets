@@ -1,0 +1,134 @@
+# Prompt de Requerimientos y Base de Datos: Sistema de Gestión de Tickets y Releases
+
+## Descripción General
+Esta aplicación web permite la gestión integral de tickets de desarrollo, releases (lanzamientos) y seguimiento de calidad (QA). Facilita la trazabilidad entre componentes de software, equipos, desarrolladores y entornos.
+
+## Stack Tecnológico
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript.
+- **UI**: Tailwind CSS 4, shadcn/ui.
+- **Backend**: Supabase (PostgreSQL) con RLS y Server Actions.
+
+## Requerimientos Funcionales Críticos
+
+### 1. Gestión de Tickets
+- **Asociación Obligatoria a Release**: Todo ticket **DEBE** estar asociado obligatoriamente a un Release (`release_id` NOT NULL). No se pueden crear tickets "huérfanos".
+- **Edición de Tickets**:
+  - El **Título** del ticket debe ser editable en cualquier estado.
+  - Se debe permitir cambiar el Release asociado (reasignación de release).
+- **Campos**: Título, Descripción, Estado (Ticket/QA), Desarrollador, Equipo, Entorno, Code Freeze.
+
+### 2. Matriz de Impacto (Ticket-Component Matrix)
+- Relación N:M entre Tickets y Componentes.
+- Propiedades: `applies` (boolean) para indicar afectación, y `notes` (text) para comentarios técnicos.
+
+### 3. Gestión de Releases
+- Definidos por fecha de inicio/fin, módulo y responsable (seleccionado del catálogo de desarrolladores).
+- Estado Activo/Inactivo.
+
+### 4. Gestión de Desarrolladores
+- **Multimódulo**: Un desarrollador puede estar asociado a múltiples módulos simultáneamente (Relación N:M).
+
+## Modelo de Datos (Esquema SQL Proporcionado)
+
+```sql
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.components (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  module_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT components_pkey PRIMARY KEY (id),
+  CONSTRAINT components_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id)
+);
+
+CREATE TABLE public.developers (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  email text UNIQUE,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT developers_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE public.developer_modules (
+  developer_id uuid NOT NULL,
+  module_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT developer_modules_pkey PRIMARY KEY (developer_id, module_id),
+  CONSTRAINT developer_modules_developer_id_fkey FOREIGN KEY (developer_id) REFERENCES public.developers(id),
+  CONSTRAINT developer_modules_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id)
+);
+
+CREATE TABLE public.environments (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT environments_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.modules (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  description text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT modules_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.releases (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  start_date date,
+  end_date date,
+  active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  module_id uuid,
+  responsible text,
+  responsible_id uuid,
+  CONSTRAINT releases_pkey PRIMARY KEY (id),
+  CONSTRAINT releases_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id),
+  CONSTRAINT releases_responsible_id_fkey FOREIGN KEY (responsible_id) REFERENCES public.developers(id)
+);
+CREATE TABLE public.statuses (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  category text NOT NULL CHECK (category = ANY (ARRAY['TICKET'::text, 'QA'::text])),
+  color text DEFAULT '#000000'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT statuses_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.teams (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL UNIQUE,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT teams_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.ticket_component_matrix (
+  ticket_id uuid NOT NULL,
+  component_id uuid NOT NULL,
+  applies boolean DEFAULT false,
+  notes text,
+  CONSTRAINT ticket_component_matrix_pkey PRIMARY KEY (ticket_id, component_id),
+  CONSTRAINT ticket_component_matrix_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES public.tickets(id),
+  CONSTRAINT ticket_component_matrix_component_id_fkey FOREIGN KEY (component_id) REFERENCES public.components(id)
+);
+CREATE TABLE public.tickets (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  title text NOT NULL,
+  description text,
+  status_id uuid,
+  qa_status_id uuid,
+  dev_id uuid,
+  team_id uuid,
+  environment_id uuid,
+  code_freeze boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  release_id uuid NOT NULL,
+  CONSTRAINT tickets_pkey PRIMARY KEY (id),
+  CONSTRAINT tickets_status_id_fkey FOREIGN KEY (status_id) REFERENCES public.statuses(id),
+  CONSTRAINT tickets_qa_status_id_fkey FOREIGN KEY (qa_status_id) REFERENCES public.statuses(id),
+  CONSTRAINT tickets_environment_id_fkey FOREIGN KEY (environment_id) REFERENCES public.environments(id),
+  CONSTRAINT tickets_release_id_fkey FOREIGN KEY (release_id) REFERENCES public.releases(id),
+  CONSTRAINT tickets_dev_id_fkey FOREIGN KEY (dev_id) REFERENCES public.developers(id),
+  CONSTRAINT tickets_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id)
+);
+```

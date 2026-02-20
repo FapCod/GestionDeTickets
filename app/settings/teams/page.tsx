@@ -5,7 +5,7 @@ export default async function TeamsPage() {
     const data = await getCatalog('teams') || []
 
     const columns = [
-        { key: 'name', label: 'Name' }
+        { key: 'name', label: 'Nombre' }
     ]
 
     return (
@@ -13,7 +13,7 @@ export default async function TeamsPage() {
             data={data}
             columns={columns}
             tableName="teams"
-            title="Teams"
+            title="Equipos"
         />
     )
 }

@@ -27,12 +27,12 @@ export function ReleaseSelector({ releases, currentReleaseId }: { releases: any[
     return (
         <Select value={currentReleaseId || ''} onValueChange={handleChange}>
             <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select Release" />
+                <SelectValue placeholder="Seleccionar Release" />
             </SelectTrigger>
             <SelectContent>
                 {releases.map(r => (
                     <SelectItem key={r.id} value={r.id}>
-                        {r.name} {r.active ? '(Active)' : ''}
+                        {r.name} {r.developers?.name && `(${r.developers.name})`} {r.active ? '(Active)' : ''}
                     </SelectItem>
                 ))}
             </SelectContent>

@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function getReleases(moduleId?: string) {
     const supabase = await createClient()
-    let query = supabase.from('releases').select('*, modules(name)')
+    let query = supabase.from('releases').select('*, modules(name), developers(id, name)')
 
     if (moduleId) {
         query = query.eq('module_id', moduleId)

@@ -5,7 +5,7 @@ export default async function EnvironmentsPage() {
     const data = await getCatalog('environments') || []
 
     const columns = [
-        { key: 'name', label: 'Name' }
+        { key: 'name', label: 'Nombre' }
     ]
 
     return (
@@ -13,7 +13,7 @@ export default async function EnvironmentsPage() {
             data={data}
             columns={columns}
             tableName="environments"
-            title="Environments"
+            title="Entornos"
         />
     )
 }

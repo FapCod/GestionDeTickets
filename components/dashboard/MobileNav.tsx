@@ -2,7 +2,7 @@
 
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Menu, Package2 } from 'lucide-react'
+import { Menu, Ticket } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -24,11 +24,13 @@ export function MobileNav({ modules }: { modules: any[] }) {
             <SheetContent side="left" className="flex flex-col">
                 <SheetHeader className="px-2">
                     <SheetTitle className="flex items-center gap-2 text-lg font-bold">
-                        <Package2 className="h-6 w-6" />
-                        Release Tracker
+                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+                            <Ticket className="h-4 w-4 text-primary-foreground" />
+                        </div>
+                        Gestión de Tickets
                     </SheetTitle>
                     <SheetDescription className="text-left">
-                        Navigate through modules and settings.
+                        Navega a través de módulos y configuraciones.
                     </SheetDescription>
                 </SheetHeader>
                 <nav className="grid gap-2 text-lg font-medium mt-4">
@@ -50,12 +52,12 @@ export function MobileNav({ modules }: { modules: any[] }) {
                         )}
                         onClick={() => setOpen(false)}
                     >
-                        Settings
+                        Configuración
                     </SmartLink>
 
                     <div className="my-2 border-t" />
                     <div className="px-4 text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">
-                        Modules
+                        Módulos
                     </div>
 
                     {modules.map((m: any) => (

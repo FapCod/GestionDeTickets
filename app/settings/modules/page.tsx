@@ -5,8 +5,8 @@ export default async function ModulesPage() {
     const data = await getCatalog('modules') || []
 
     const columns = [
-        { key: 'name', label: 'Name' },
-        { key: 'description', label: 'Description' }
+        { key: 'name', label: 'Nombre' },
+        { key: 'description', label: 'Descripción' }
     ]
 
     return (
@@ -14,7 +14,7 @@ export default async function ModulesPage() {
             data={data}
             columns={columns}
             tableName="modules"
-            title="Modules"
+            title="Módulos"
         />
     )
 }

@@ -75,10 +75,10 @@ export default async function ModuleDashboard({ params, searchParams }: { params
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h1 className="text-2xl font-bold tracking-tight">{moduleData?.name || 'Dashboard'} Matrix</h1>
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 w-full md:w-auto">
-                    {activeRelease?.responsible && (
+                    {activeRelease?.developers?.name && (
                         <div className="text-sm bg-muted/50 px-2 py-1 rounded-md border">
-                            <span className="text-muted-foreground mr-1">Responsible:</span>
-                            <span className="font-medium">{activeRelease.responsible}</span>
+                            <span className="text-muted-foreground mr-1">Responsable:</span>
+                            <span className="font-medium">{activeRelease.developers.name}</span>
                         </div>
                     )}
                     <div className="flex items-center gap-2 w-full md:w-auto">

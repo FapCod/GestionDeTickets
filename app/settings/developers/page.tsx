@@ -1,9 +1,10 @@
 import CatalogTable, { Column } from '@/components/settings/CatalogTable'
 import { getCatalog } from '@/actions/catalogs'
+import { getDevelopersWithModules, createDeveloperWithModules, updateDeveloperWithModules, deleteDeveloper } from '@/actions/developers'
 
 export default async function DevelopersPage() {
     const [developers, modules] = await Promise.all([
-        getCatalog('developers') || [],
+        getDevelopersWithModules(),
         getCatalog('modules') || []
     ])
 
@@ -14,14 +15,15 @@ export default async function DevelopersPage() {
     }))
 
     const columns: Column[] = [
-        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'name', label: 'Nombre', type: 'text' },
         {
-            key: 'module_id',
-            label: 'Module',
-            type: 'select',
+            key: 'module_ids',
+            label: 'Módulos',
+            type: 'multi-select',
             options: moduleOptions,
             filterable: true
-        }
+        },
+        { key: 'email', label: 'Email', type: 'text' }
     ]
 
     return (
@@ -29,7 +31,12 @@ export default async function DevelopersPage() {
             data={developers}
             columns={columns}
             tableName="developers"
-            title="Developers"
+            title="Desarrolladores"
+            customActions={{
+                create: createDeveloperWithModules,
+                update: updateDeveloperWithModules,
+                delete: deleteDeveloper
+            }}
         />
     )
 }

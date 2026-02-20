@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 const items = [
-    { href: "/settings/modules", title: "Modules" },
-    { href: "/settings/components", title: "Components" },
-    { href: "/settings/statuses", title: "Statuses" },
-    { href: "/settings/teams", title: "Teams" },
-    { href: "/settings/environments", title: "Environments" },
-    { href: "/settings/developers", title: "Developers" },
+    { href: "/settings/modules", title: "Módulos" },
+    { href: "/settings/components", title: "Componentes" },
+    { href: "/settings/statuses", title: "Estados" },
+    { href: "/settings/teams", title: "Equipos" },
+    { href: "/settings/environments", title: "Entornos" },
+    { href: "/settings/developers", title: "Desarrolladores" },
     { href: "/settings/releases", title: "Releases" },
 ]
 

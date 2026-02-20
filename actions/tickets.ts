@@ -39,6 +39,10 @@ export async function getTickets(releaseId?: string) {
 }
 
 export async function createTicket(data: any) {
+    if (!data.release_id) {
+        return { error: 'Release is required' }
+    }
+
     const supabase = await createClient()
     const { error } = await supabase.from('tickets').insert(data)
 

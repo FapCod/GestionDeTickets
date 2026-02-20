@@ -11,8 +11,8 @@ export default async function DashboardPage() {
     return (
         <div className="flex items-center justify-center h-full">
             <div className="text-center">
-                <h1 className="text-2xl font-bold">No Modules Found</h1>
-                <p className="text-muted-foreground">Please create modules in Settings to get started.</p>
+                <h1 className="text-2xl font-bold">No se encontraron módulos</h1>
+                <p className="text-muted-foreground">Por favor, cree módulos en Configuración para comenzar.</p>
             </div>
         </div>
     )

@@ -33,7 +33,7 @@ import { Pencil, Trash2, Plus } from 'lucide-react'
 export interface Column {
     key: string
     label: string
-    type?: 'text' | 'select' | 'color' | 'date'
+    type?: 'text' | 'select' | 'multi-select' | 'color' | 'date'
     options?: { label: string, value: string }[]
     filterable?: boolean // New prop for filtering
 }
@@ -43,9 +43,14 @@ interface CatalogTableProps {
     columns: Column[]
     tableName: 'modules' | 'components' | 'statuses' | 'teams' | 'environments' | 'developers' | 'releases'
     title: string
+    customActions?: {
+        create: (data: any) => Promise<any>
+        update: (id: string, data: any) => Promise<any>
+        delete: (id: string) => Promise<any>
+    }
 }
 
-export default function CatalogTable({ data, columns, tableName, title }: CatalogTableProps) {
+export default function CatalogTable({ data, columns, tableName, title, customActions }: CatalogTableProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [editingItem, setEditingItem] = useState<any | null>(null)
 
@@ -68,12 +73,12 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
     const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage)
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this item?')) return
+        if (!confirm('¿Estás seguro de eliminar este elemento?')) return
         const res = await deleteCatalogItem(tableName, id, '/settings/' + tableName)
         if (res.error) {
             toast.error(res.error)
         } else {
-            toast.success('Item deleted')
+            toast.success('Elemento eliminado')
         }
     }
 
@@ -87,17 +92,17 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
             <div className="flex flex-col gap-4 bg-card p-4 rounded-lg border md:flex-row md:items-center md:justify-between">
                 <div>
                     <h2 className="text-lg font-bold">{title}</h2>
-                    <p className="text-sm text-muted-foreground">Manage your {title.toLowerCase()} here.</p>
+                    <p className="text-sm text-muted-foreground">Gestiona tus {title.toLowerCase()} aquí.</p>
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
                     {/* Dynamic Filters */}
-                    {columns.filter(col => col.filterable && col.type === 'select').map(col => (
+                    {columns.filter(col => col.filterable && (col.type === 'select' || col.type === 'multi-select')).map(col => (
                         <Select key={col.key} onValueChange={(val) => handleFilterChange(col.key, val)}>
                             <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder={`Filter by ${col.label}`} />
+                                <SelectValue placeholder={`Filtrar por ${col.label}`} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All {col.label}s</SelectItem>
+                                <SelectItem value="all">Todos {col.label}s</SelectItem>
                                 {col.options?.map(opt => (
                                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                                 ))}
@@ -106,7 +111,7 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
                     ))}
 
                     <Button onClick={() => { setEditingItem(null); setIsOpen(true) }}>
-                        <Plus className="mr-2 h-4 w-4" /> Add New
+                        <Plus className="mr-2 h-4 w-4" /> Nuevo
                     </Button>
                 </div>
             </div>
@@ -118,7 +123,7 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
                             {columns.map((col) => (
                                 <TableHead key={col.key}>{col.label}</TableHead>
                             ))}
-                            <TableHead className="w-[100px]">Actions</TableHead>
+                            <TableHead className="w-[100px]">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -140,6 +145,23 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
                                             const option = col.options?.find(o => o.value === row[col.key])
                                             return <TableCell key={col.key}>{option ? option.label : row[col.key]}</TableCell>
                                         }
+                                        if (col.type === 'multi-select') {
+                                            const values = Array.isArray(row[col.key]) ? row[col.key] : []
+                                            return (
+                                                <TableCell key={col.key}>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {values.map((val: string) => {
+                                                            const option = col.options?.find(o => o.value === val)
+                                                            return (
+                                                                <span key={val} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
+                                                                    {option ? option.label : val}
+                                                                </span>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </TableCell>
+                                            )
+                                        }
                                         return <TableCell key={col.key}>{row[col.key]}</TableCell>
                                     })}
                                     <TableCell className="flex gap-2">
@@ -155,7 +177,7 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={columns.length + 1} className="h-24 text-center">
-                                    No results.
+                                    Sin resultados.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -173,10 +195,10 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
                             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                             disabled={currentPage === 1}
                         >
-                            Previous
+                            Anterior
                         </Button>
                         <div className="text-sm font-medium">
-                            Page {currentPage} of {totalPages}
+                            Página {currentPage} de {totalPages}
                         </div>
                         <Button
                             variant="outline"
@@ -184,7 +206,7 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
                             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                             disabled={currentPage === totalPages}
                         >
-                            Next
+                            Siguiente
                         </Button>
                     </div>
                 )
@@ -193,13 +215,14 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogContent className="max-w-[90vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editingItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+                        <DialogTitle>{editingItem ? 'Editar Elemento' : 'Agregar Nuevo'}</DialogTitle>
                     </DialogHeader>
                     <CatalogForm
                         columns={columns}
                         tableName={tableName}
                         defaultValues={editingItem}
                         onSuccess={() => setIsOpen(false)}
+                        customActions={customActions}
                     />
                 </DialogContent>
             </Dialog>
@@ -207,7 +230,7 @@ export default function CatalogTable({ data, columns, tableName, title }: Catalo
     )
 }
 
-function CatalogForm({ columns, tableName, defaultValues, onSuccess }: any) {
+function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActions }: any) {
     const { register, handleSubmit, control } = useForm({
         defaultValues: defaultValues || {}
     })
@@ -224,15 +247,23 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess }: any) {
 
         let res
         if (defaultValues?.id) {
-            res = await updateCatalogItem(tableName, defaultValues.id, cleanData, '/settings/' + tableName)
+            if (customActions?.update) {
+                res = await customActions.update(defaultValues.id, cleanData)
+            } else {
+                res = await updateCatalogItem(tableName, defaultValues.id, cleanData, '/settings/' + tableName)
+            }
         } else {
-            res = await createCatalogItem(tableName, cleanData, '/settings/' + tableName)
+            if (customActions?.create) {
+                res = await customActions.create(cleanData)
+            } else {
+                res = await createCatalogItem(tableName, cleanData, '/settings/' + tableName)
+            }
         }
 
         if (res.error) {
             toast.error(res.error)
         } else {
-            toast.success(defaultValues ? 'Item updated' : 'Item created')
+            toast.success(defaultValues ? 'Elemento actualizado' : 'Elemento creado')
             onSuccess()
         }
     }
@@ -249,7 +280,7 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess }: any) {
                             render={({ field }) => (
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder={`Select ${col.label}`} />
+                                        <SelectValue placeholder={`Seleccionar ${col.label}`} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {col.options?.map((opt: any) => (
@@ -268,13 +299,45 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess }: any) {
                         </div>
                     ) : col.type === 'date' ? (
                         <Input id={col.key} type="date" {...register(col.key)} />
+                    ) : col.type === 'multi-select' ? (
+                        <Controller
+                            control={control}
+                            name={col.key}
+                            render={({ field }) => (
+                                <div className="border rounded-md p-2 space-y-2 max-h-48 overflow-y-auto">
+                                    {col.options?.map((opt: any) => {
+                                        const values = Array.isArray(field.value) ? field.value : []
+                                        const isChecked = values.includes(opt.value)
+                                        return (
+                                            <div key={opt.value} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`${col.key}-${opt.value}`}
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        const newValues = e.target.checked
+                                                            ? [...values, opt.value]
+                                                            : values.filter((v: string) => v !== opt.value)
+                                                        field.onChange(newValues)
+                                                    }}
+                                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                />
+                                                <label htmlFor={`${col.key}-${opt.value}`} className="text-sm cursor-pointer select-none">
+                                                    {opt.label}
+                                                </label>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        />
                     ) : (
                         <Input id={col.key} {...register(col.key)} />
                     )}
                 </div>
             ))}
             <div className="flex justify-end gap-2">
-                <Button type="submit">Save</Button>
+                <Button type="submit">Guardar</Button>
             </div>
         </form>
     )

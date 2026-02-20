@@ -13,7 +13,7 @@ function SubmitButton() {
     const { pending } = useFormStatus()
     return (
         <Button className="w-full" disabled={pending}>
-            {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign in'}
+            {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Ingresar'}
         </Button>
     )
 }
@@ -25,11 +25,11 @@ export default function LoginForm({ error }: { error?: string }) {
         <form action={login}>
             <CardContent className="grid gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" placeholder="m@example.com" required />
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input id="email" name="email" type="email" placeholder="tu@ejemplo.com" required />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Contraseña</Label>
                     <div className="relative">
                         <Input
                             id="password"
