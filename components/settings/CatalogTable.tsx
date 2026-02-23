@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ComponentNoteCell } from './ComponentNoteCell'
 import {
     Table,
     TableBody,
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
     Dialog,
     DialogContent,
@@ -63,7 +65,7 @@ import {
 export interface Column {
     key: string
     label: string
-    type?: 'text' | 'select' | 'multi-select' | 'color' | 'date'
+    type?: 'text' | 'select' | 'multi-select' | 'color' | 'date' | 'note'
     options?: { label: string, value: string }[]
     filterable?: boolean // New prop for filtering
 }
@@ -293,6 +295,17 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
                                                     </TableCell>
                                                 )
                                             }
+                                            if (col.type === 'note') {
+                                                return (
+                                                    <TableCell key={col.key} className="p-0">
+                                                        <ComponentNoteCell
+                                                            componentId={row.id}
+                                                            initialNotes={row.technical_notes}
+                                                            content={row[col.key]}
+                                                        />
+                                                    </TableCell>
+                                                )
+                                            }
                                             return <TableCell key={col.key}>{row[col.key]}</TableCell>
                                         })}
                                         <TableCell className="flex gap-2">
@@ -430,6 +443,10 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActio
             if (data[col.key] !== undefined) {
                 cleanData[col.key] = data[col.key]
             }
+            // Audit: Ensure technical_notes is included for 'note' type columns
+            if (col.type === 'note' && data.technical_notes !== undefined) {
+                cleanData.technical_notes = data.technical_notes
+            }
         })
 
         let res
@@ -518,6 +535,24 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActio
                                 </div>
                             )}
                         />
+                    ) : col.type === 'note' ? (
+                        <div className="space-y-4 pt-1.5">
+                            <Input
+                                id={col.key}
+                                {...register(col.key)}
+                                className={cn(
+                                    tableName === 'components' && col.key === 'name' && "uppercase"
+                                )}
+                            />
+                            <div className="grid w-full gap-1.5">
+                                <Label htmlFor="technical_notes">Nota Técnica</Label>
+                                <Textarea
+                                    id="technical_notes"
+                                    {...register('technical_notes')}
+                                    placeholder="Nota interna de Excel..."
+                                />
+                            </div>
+                        </div>
                     ) : (
                         <Input
                             id={col.key}

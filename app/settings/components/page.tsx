@@ -2,19 +2,23 @@ import CatalogTable, { Column } from '@/components/settings/CatalogTable'
 import { getCatalog, reorderComponents } from '@/actions/catalogs'
 
 export default async function ComponentsPage() {
+    // Audit: Replaced sequential awaits with Promise.all for better performance
     const [components, modules] = await Promise.all([
-        getCatalog('components') || [],
-        getCatalog('modules') || []
+        getCatalog('components'),
+        getCatalog('modules')
     ])
 
-    // Create options for module select
     const moduleOptions = modules.map((m: any) => ({
         label: m.name,
         value: m.id
     }))
 
     const columns: Column[] = [
-        { key: 'name', label: 'Nombre', type: 'text' },
+        {
+            key: 'name',
+            label: 'Nombre',
+            type: 'note' // Nueva funcionalidad: Notas estilo Excel
+        },
         {
             key: 'module_id',
             label: 'Módulo',
@@ -26,23 +30,19 @@ export default async function ComponentsPage() {
 
     const handleReorder = async (orderedItems: { id: string, sort_order: number }[]) => {
         'use server'
-        // Find the module_id from the first item (all items should belong to the same module if UI logic is followed)
         if (orderedItems.length === 0) return { success: true }
 
-        // We need the module_id. Since getCatalog doesn't give us module_id easily in this scope
-        // without searching the components array, we'll find it from the components data.
-        const firstId = orderedItems[0].id
-        const component = components.find((c: any) => c.id === firstId)
+        const componentId = orderedItems[0].id
+        const component = (components as any[]).find(c => c.id === componentId)
         const moduleId = component?.module_id
 
         if (!moduleId) return { error: 'No se pudo determinar el módulo' }
-
         return await reorderComponents(moduleId, orderedItems)
     }
 
     return (
         <CatalogTable
-            data={components}
+            data={components || []}
             columns={columns}
             tableName="components"
             title="Componentes"

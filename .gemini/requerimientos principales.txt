@@ -28,7 +28,7 @@ Esta aplicación web permite la gestión integral de tickets de desarrollo, rele
 ### 4. Gestión de Desarrolladores
 - **Multimódulo**: Un desarrollador puede estar asociado a múltiples módulos simultáneamente (Relación N:M).
 
-## Modelo de Datos (Esquema SQL Proporcionado)
+## Modelo de Datos (Esquema SQL)
 
 ```sql
 -- WARNING: This schema is for context only and is not meant to be run.
@@ -39,18 +39,11 @@ CREATE TABLE public.components (
   name text NOT NULL,
   module_id uuid NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
+  sort_order integer NOT NULL,
+  technical_notes text,
   CONSTRAINT components_pkey PRIMARY KEY (id),
   CONSTRAINT components_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id)
 );
-
-CREATE TABLE public.developers (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  name text NOT NULL,
-  email text UNIQUE,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT developers_pkey PRIMARY KEY (id)
-);
-
 CREATE TABLE public.developer_modules (
   developer_id uuid NOT NULL,
   module_id uuid NOT NULL,
@@ -59,7 +52,13 @@ CREATE TABLE public.developer_modules (
   CONSTRAINT developer_modules_developer_id_fkey FOREIGN KEY (developer_id) REFERENCES public.developers(id),
   CONSTRAINT developer_modules_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id)
 );
-
+CREATE TABLE public.developers (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  email text UNIQUE,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT developers_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.environments (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL UNIQUE,
@@ -81,7 +80,6 @@ CREATE TABLE public.releases (
   active boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),
   module_id uuid,
-  responsible text,
   responsible_id uuid,
   CONSTRAINT releases_pkey PRIMARY KEY (id),
   CONSTRAINT releases_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id),
@@ -132,3 +130,38 @@ CREATE TABLE public.tickets (
   CONSTRAINT tickets_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id)
 );
 ```
+
+---
+
+### Análisis de Actualización - 2026-02-23
+
+**Propósito Principal**
+El software es un **Sistema de Gestión de Lanzamientos (Release Tracking Dashboard)** diseñado para reemplazar el seguimiento manual en hojas de cálculo. Su objetivo central es centralizar la trazabilidad de tickets de desarrollo, la afectación de componentes específicos por cada ticket (Matriz de Impacto) y la coordinación de lanzamientos (Releases) con fechas y responsables definidos, todo integrado con un flujo de calidad (QA).
+
+**Stack Tecnológico Detectado**
+- **Framework**: Next.js 16.1.6 (App Router)
+- **Lenguajes**: TypeScript
+- **Estilos**: Tailwind CSS 4.0
+- **UI Components**: shadcn/ui (Radix UI)
+- **Base de Datos & Backend**: Supabase (PostgreSQL, Auth, SSR)
+- **Gestión de Estado & Feedback**: React Hook Form, Sonner, Lucide React
+
+**Arquitectura Detectada**
+- **Patrón de Diseño**: **Arquitectura de Capas basada en Next.js App Router**.
+  - **Capa de Presentación**: `/app` y `/components`.
+  - **Capa de Lógica**: `/actions` (Server Actions).
+  - **Capa de Datos**: Supabase con acceso mediante `@supabase/ssr`.
+  - **Seguridad**: Middleware para protección de rutas y RLS en base de datos.
+
+**Módulos/Características Core**
+1. **Matriz Dinámica de Impacto**: Panel central para cruzar Tickets vs. Componentes.
+2. **Gestión de Tickets y QA**: Asociación obligatoria a Releases y trazabilidad de estados.
+3. **Administración de Lanzamientos (Releases)**: Ciclos de vida, responsables y fechas de Code Freeze.
+4. **Gestión de Catálogos (Admin Panel)**: CRUDs para Módulos, Componentes, Equipos, Desarrolladores y Ambientes.
+5. **Asignación Multimódulo**: Soporte N:M para desarrolladores y módulos.
+6. **Notas Técnicas (Estilo Excel)**: 
+   - Cada componente puede tener notas técnicas asociadas (`technical_notes`).
+   - **Indicador Visual**: Triángulo rojo en la esquina superior derecha si el componente tiene una nota (visible en Matrix y Catálogo).
+   - **Lectura/Edición**: Uso de `HoverCard` para lectura rápida y `Popover` para edición directa.
+
+---

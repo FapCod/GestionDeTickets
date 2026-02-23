@@ -28,6 +28,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { updateTicket, createTicket, deleteTicket } from '@/actions/tickets'
 import { toggleComponentApplies, updateComponentNotes } from '@/actions/matrix'
+import { ComponentNoteCell } from '@/components/settings/ComponentNoteCell'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -175,8 +176,12 @@ export default function TicketMatrix({
                             <TableHead className="min-w-[120px]">Equipo</TableHead>
                             <TableHead className="min-w-[100px]">Entorno</TableHead>
                             {components.map(c => (
-                                <TableHead key={c.id} className="text-center min-w-[100px] border-l whitespace-nowrap" title={c.name}>
-                                    {c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name}
+                                <TableHead key={c.id} className="text-center min-w-[100px] border-l whitespace-nowrap p-0 m-0" title={c.name}>
+                                    <ComponentNoteCell
+                                        componentId={c.id}
+                                        initialNotes={c.technical_notes}
+                                        content={c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name}
+                                    />
                                 </TableHead>
                             ))}
                             <TableHead className="w-[50px]"></TableHead>
@@ -210,93 +215,59 @@ export default function TicketMatrix({
                                     </div>
                                 </TableCell>
 
-                                {/* Release Select */}
+                                {/* Ticket Fields Refactored with MatrixSelect */}
                                 <TableCell>
-                                    <Select
-                                        defaultValue={ticket.release_id}
-                                        onValueChange={(val) => handleStatusChange(ticket.id, 'release_id', val)}
-                                    >
-                                        <SelectTrigger className="h-8">
-                                            <SelectValue placeholder="Release" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {releases.map(r => (
-                                                <SelectItem key={r.id} value={r.id} disabled={!r.active}>
-                                                    {r.name} {!r.active && '(Inactivo)'}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-
-                                {/* Status Selects */}
-                                <TableCell>
-                                    <Select
-                                        defaultValue={ticket.status_id}
-                                        onValueChange={(val) => handleStatusChange(ticket.id, 'status_id', val)}
-                                    >
-                                        <SelectTrigger className="h-8">
-                                            <SelectValue placeholder="Estado" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {ticketStatuses.map(s => (
-                                                <SelectItem key={s.id} value={s.id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color || '#ccc' }}></div>
-                                                        {s.name}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <MatrixSelect
+                                        value={ticket.release_id}
+                                        onValueChange={(val: string) => handleStatusChange(ticket.id, 'release_id', val)}
+                                        options={releases.map(r => ({ label: r.name, value: r.id, disabled: !r.active }))}
+                                        placeholder="Release"
+                                    />
                                 </TableCell>
 
                                 <TableCell>
-                                    <Select
-                                        defaultValue={ticket.qa_status_id}
-                                        onValueChange={(val) => handleStatusChange(ticket.id, 'qa_status_id', val)}
-                                    >
-                                        <SelectTrigger className="h-8">
-                                            <SelectValue placeholder="QA" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {qaStatuses.map(s => (
-                                                <SelectItem key={s.id} value={s.id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color || '#ccc' }}></div>
-                                                        {s.name}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <MatrixSelect
+                                        value={ticket.status_id}
+                                        onValueChange={(val: string) => handleStatusChange(ticket.id, 'status_id', val)}
+                                        options={ticketStatuses.map(s => ({ label: s.name, value: s.id, color: s.color }))}
+                                        placeholder="Estado"
+                                    />
                                 </TableCell>
 
                                 <TableCell>
-                                    <Select defaultValue={ticket.dev_id} onValueChange={(val) => handleStatusChange(ticket.id, 'dev_id', val)}>
-                                        <SelectTrigger className="h-8"><SelectValue placeholder="Dev" /></SelectTrigger>
-                                        <SelectContent>
-                                            {developers.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <MatrixSelect
+                                        value={ticket.qa_status_id}
+                                        onValueChange={(val: string) => handleStatusChange(ticket.id, 'qa_status_id', val)}
+                                        options={qaStatuses.map(s => ({ label: s.name, value: s.id, color: s.color }))}
+                                        placeholder="QA"
+                                    />
                                 </TableCell>
 
                                 <TableCell>
-                                    <Select defaultValue={ticket.team_id} onValueChange={(val) => handleStatusChange(ticket.id, 'team_id', val)}>
-                                        <SelectTrigger className="h-8"><SelectValue placeholder="Equipo" /></SelectTrigger>
-                                        <SelectContent>
-                                            {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <MatrixSelect
+                                        value={ticket.dev_id}
+                                        onValueChange={(val: string) => handleStatusChange(ticket.id, 'dev_id', val)}
+                                        options={developers.map(d => ({ label: d.name, value: d.id }))}
+                                        placeholder="Dev"
+                                    />
                                 </TableCell>
 
                                 <TableCell>
-                                    <Select defaultValue={ticket.environment_id} onValueChange={(val) => handleStatusChange(ticket.id, 'environment_id', val)}>
-                                        <SelectTrigger className="h-8"><SelectValue placeholder="Env" /></SelectTrigger>
-                                        <SelectContent>
-                                            {environments.map(e => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <MatrixSelect
+                                        value={ticket.team_id}
+                                        onValueChange={(val: string) => handleStatusChange(ticket.id, 'team_id', val)}
+                                        options={teams.map(t => ({ label: t.name, value: t.id }))}
+                                        placeholder="Equipo"
+                                    />
+                                </TableCell>
+
+                                <TableCell>
+                                    <MatrixSelect
+                                        value={ticket.environment_id}
+                                        onValueChange={(val: string) => handleStatusChange(ticket.id, 'environment_id', val)}
+                                        options={environments.map(e => ({ label: e.name, value: e.id }))}
+                                        placeholder="Env"
+                                    />
                                 </TableCell>
 
                                 {/* Matrix Toggle/Notes Cells */}
@@ -382,6 +353,32 @@ export default function TicketMatrix({
                 defaultReleaseId={defaultReleaseId}
             />
         </div>
+    )
+}
+
+/**
+ * Audit: Reusable MatrixSelect to follow DRY principles.
+ * Encapsulates standard configuration for matrix dropdowns.
+ */
+function MatrixSelect({ value, onValueChange, options, placeholder }: any) {
+    return (
+        <Select defaultValue={value} onValueChange={onValueChange}>
+            <SelectTrigger className="h-8">
+                <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+                {options.map((opt: any) => (
+                    <SelectItem key={opt.value} value={opt.value} disabled={opt.disabled}>
+                        <div className="flex items-center gap-2">
+                            {opt.color && (
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: opt.color || '#ccc' }}></div>
+                            )}
+                            {opt.label} {opt.disabled && '(Inactivo)'}
+                        </div>
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
     )
 }
 
