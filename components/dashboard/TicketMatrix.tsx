@@ -30,8 +30,14 @@ import { updateTicket, createTicket, deleteTicket } from '@/actions/tickets'
 import { toggleComponentApplies, updateComponentNotes } from '@/actions/matrix'
 import { ComponentNoteCell } from '@/components/settings/ComponentNoteCell'
 import { toast } from 'sonner'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil, ExternalLink, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 import {
     AlertDialog,
@@ -68,6 +74,10 @@ export default function TicketMatrix({
     defaultReleaseId
 }: TicketMatrixProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
+
+    // Edit Ticket state
+    const [isEditOpen, setIsEditOpen] = useState(false)
+    const [editingTicket, setEditingTicket] = useState<any | null>(null)
 
     // Delete confirmation state
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -146,6 +156,72 @@ export default function TicketMatrix({
         setIsDeleteDialogOpen(true)
     }
 
+    const handleCopyTable = async () => {
+        if (!tickets || tickets.length === 0) return;
+
+        // 1. Preparar los datos
+        const headers = ["Ticket", "Descripción", "Dev", "Equipo", "Entorno"];
+
+        const plainRows: string[] = [];
+        const htmlRows: string[] = [];
+
+        tickets.forEach(ticket => {
+            const title = ticket.title || "-";
+            // Limpiamos la descripción de saltos de línea y caracteres raros
+            const desc = ticket.description ? ticket.description.replace(/(\r\n|\n|\r)/gm, " ") : "-";
+            const dev = ticket.developers?.name || "-";
+            const equipo = ticket.teams?.name || "-";
+            const entorno = ticket.environments?.name || "-";
+
+            // Fila para texto plano (TSV)
+            plainRows.push([title, desc, dev, equipo, entorno].join("\t"));
+
+            // Fila para HTML
+            htmlRows.push(`
+                <tr>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${title}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${desc}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${dev}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${equipo}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${entorno}</td>
+                </tr>
+            `);
+        });
+
+        const tsvText = [headers.join("\t"), ...plainRows].join("\n");
+
+        const htmlTable = `
+            <table style="border-collapse: collapse; font-family: sans-serif; width: 100%;">
+                <thead>
+                    <tr style="background-color: #f3f4f6;">
+                        ${headers.map(h => `<th style="border: 1px solid #ccc; padding: 8px; text-align: left;">${h}</th>`).join("")}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${htmlRows.join("")}
+                </tbody>
+            </table>
+        `;
+
+        // 2. Escribir en el portapapeles usando Clipboard API
+        try {
+            const clipboardItem = new ClipboardItem({
+                "text/plain": new Blob([tsvText], { type: "text/plain" }),
+                "text/html": new Blob([htmlTable], { type: "text/html" })
+            });
+
+            await navigator.clipboard.write([clipboardItem]);
+            toast.success("¡Copiado!", {
+                description: "Tabla copiada. Pégala en Teams, Outlook o Excel."
+            });
+        } catch (error) {
+            console.error("Error al copiar:", error);
+            toast.error("Error", {
+                description: "No se pudo copiar la tabla."
+            });
+        }
+    };
+
     // Helper to get matrix state
     const getMatrixEntry = (ticketId: string, componentId: string) => {
         return optimisticMatrix.find((m: any) => m.ticket_id === ticketId && m.component_id === componentId)
@@ -158,7 +234,10 @@ export default function TicketMatrix({
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={handleCopyTable}>
+                    <Copy className="mr-2 h-4 w-4" /> Copiar
+                </Button>
                 <Button onClick={() => setIsCreateOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" /> Nuevo Ticket
                 </Button>
@@ -190,28 +269,52 @@ export default function TicketMatrix({
                     <TableBody>
                         {tickets.map(ticket => (
                             <TableRow key={ticket.id}>
-                                <TableCell>
+                                <TableCell className="relative group">
                                     <div className="flex flex-col gap-0.5">
-                                        <Input
-                                            defaultValue={ticket.title}
-                                            className="h-8 font-medium border-transparent hover:border-input focus:border-input px-2 w-full"
-                                            onBlur={(e) => {
-                                                if (e.target.value !== ticket.title) {
-                                                    handleStatusChange(ticket.id, 'title', e.target.value)
-                                                }
-                                            }}
-                                        />
-                                        <Input
-                                            defaultValue={ticket.description || ''}
-                                            className="h-7 text-xs text-muted-foreground border-transparent hover:border-input focus:border-input px-2 truncate w-full"
-                                            onBlur={(e) => {
-                                                const currentDesc = ticket.description || ''
-                                                if (e.target.value !== currentDesc) {
-                                                    handleStatusChange(ticket.id, 'description', e.target.value)
-                                                }
-                                            }}
-                                            placeholder="Sin descripción"
-                                        />
+                                        <div className="flex items-center justify-between gap-1">
+                                            {ticket.ticket_url ? (
+                                                <a
+                                                    href={ticket.ticket_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 hover:underline font-medium truncate flex items-center gap-1"
+                                                >
+                                                    {ticket.title}
+                                                    <ExternalLink className="h-3 w-3 inline" />
+                                                </a>
+                                            ) : (
+                                                <span className="font-medium truncate">{ticket.title}</span>
+                                            )}
+
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-1"
+                                                onClick={() => {
+                                                    setEditingTicket(ticket)
+                                                    setIsEditOpen(true)
+                                                }}
+                                            >
+                                                <Pencil className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+
+                                        {ticket.description ? (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className="text-xs text-muted-foreground truncate cursor-help block max-w-[180px]">
+                                                            {ticket.description}
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="max-w-[300px] break-words">
+                                                        {ticket.description}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground italic">Sin descripción</span>
+                                        )}
                                     </div>
                                 </TableCell>
 
@@ -352,6 +455,18 @@ export default function TicketMatrix({
                 releases={activeReleases}
                 defaultReleaseId={defaultReleaseId}
             />
+
+            <EditTicketDialog
+                open={isEditOpen}
+                onOpenChange={setIsEditOpen}
+                ticket={editingTicket}
+                statuses={ticketStatuses}
+                qaStatuses={qaStatuses}
+                developers={developers}
+                teams={teams}
+                environments={environments}
+                releases={releases}
+            />
         </div>
     )
 }
@@ -396,6 +511,7 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
         const data = {
             title: formData.get('title'),
             description: formData.get('description'),
+            ticket_url: formData.get('ticket_url') || null,
             status_id: formData.get('status_id') || null,
             qa_status_id: formData.get('qa_status_id') || null,
             dev_id: formData.get('dev_id') || null,
@@ -427,6 +543,10 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
                     <div className="grid w-full gap-1.5">
                         <Label htmlFor="description">Descripción</Label>
                         <Input id="description" name="description" />
+                    </div>
+                    <div className="grid w-full gap-1.5">
+                        <Label htmlFor="ticket_url">URL del Ticket (Opcional)</Label>
+                        <Input id="ticket_url" name="ticket_url" placeholder="https://jira.com/..." />
                     </div>
 
                     <div className="grid gap-1.5">
@@ -496,6 +616,129 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
 
                     <div className="flex justify-end gap-2 mt-2">
                         <Button type="submit">Crear</Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+function EditTicketDialog({ open, onOpenChange, ticket, statuses, qaStatuses, developers, teams, environments, releases }: any) {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if (!ticket) return
+
+        const formData = new FormData(e.currentTarget)
+        const data = {
+            title: formData.get('title'),
+            description: formData.get('description'),
+            ticket_url: formData.get('ticket_url') || null,
+            status_id: formData.get('status_id') || null,
+            qa_status_id: formData.get('qa_status_id') || null,
+            dev_id: formData.get('dev_id') || null,
+            team_id: formData.get('team_id') || null,
+            environment_id: formData.get('environment_id') || null,
+            release_id: formData.get('release_id') || null,
+        }
+
+        const res = await updateTicket(ticket.id, data)
+        if (res.error) {
+            toast.error(res.error)
+        } else {
+            toast.success('Ticket actualizado')
+            onOpenChange(false)
+        }
+    }
+
+    if (!ticket) return null
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Editar Ticket</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                    <div className="grid w-full gap-1.5">
+                        <Label htmlFor="title">Título</Label>
+                        <Input id="title" name="title" defaultValue={ticket.title} required />
+                    </div>
+                    <div className="grid w-full gap-1.5">
+                        <Label htmlFor="description">Descripción</Label>
+                        <Input id="description" name="description" defaultValue={ticket.description || ''} />
+                    </div>
+                    <div className="grid w-full gap-1.5">
+                        <Label htmlFor="ticket_url">URL del Ticket (Opcional)</Label>
+                        <Input id="ticket_url" name="ticket_url" defaultValue={ticket.ticket_url || ''} placeholder="https://jira.com/..." />
+                    </div>
+
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="release_id" className="flex gap-1">Release <span className="text-destructive">*</span></Label>
+                        <Select name="release_id" defaultValue={ticket.release_id} required>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar Release" /></SelectTrigger>
+                            <SelectContent>
+                                {releases.map((s: any) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                        {s.name} {!s.active && '(Inactivo)'}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="status_id">Estado</Label>
+                            <Select name="status_id" defaultValue={ticket.status_id || undefined}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                                <SelectContent>
+                                    {statuses.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="qa_status_id">Estado QA</Label>
+                            <Select name="qa_status_id" defaultValue={ticket.qa_status_id || undefined}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                                <SelectContent>
+                                    {qaStatuses.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="dev_id">Desarrollador</Label>
+                            <Select name="dev_id" defaultValue={ticket.dev_id || undefined}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                                <SelectContent>
+                                    {developers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="team_id">Equipo</Label>
+                            <Select name="team_id" defaultValue={ticket.team_id || undefined}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                                <SelectContent>
+                                    {teams.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="environment_id">Entorno</Label>
+                        <Select name="environment_id" defaultValue={ticket.environment_id || undefined}>
+                            <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                            <SelectContent>
+                                {environments.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-2">
+                        <Button type="submit">Guardar Cambios</Button>
                     </div>
                 </form>
             </DialogContent>

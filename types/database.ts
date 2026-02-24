@@ -187,6 +187,7 @@ export interface Database {
                     environment_id: string | null
                     release_id: string
                     code_freeze: boolean | null
+                    ticket_url: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -201,6 +202,7 @@ export interface Database {
                     environment_id?: string | null
                     release_id: string
                     code_freeze?: boolean | null
+                    ticket_url?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -215,6 +217,7 @@ export interface Database {
                     environment_id?: string | null
                     release_id?: string
                     code_freeze?: boolean | null
+                    ticket_url?: string | null
                     created_at?: string
                     updated_at?: string
                 }
