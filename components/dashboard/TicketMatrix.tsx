@@ -38,6 +38,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import ReactSelect from 'react-select'
 
 import {
     AlertDialog,
@@ -169,7 +170,7 @@ export default function TicketMatrix({
             const title = ticket.title || "-";
             // Limpiamos la descripción de saltos de línea y caracteres raros
             const desc = ticket.description ? ticket.description.replace(/(\r\n|\n|\r)/gm, " ") : "-";
-            const dev = ticket.developers?.name || "-";
+            const dev = ticket.ticket_developers?.map((td: any) => td.developers?.name).join(', ') || "-";
             const equipo = ticket.teams?.name || "-";
             const entorno = ticket.environments?.name || "-";
 
@@ -346,13 +347,8 @@ export default function TicketMatrix({
                                     />
                                 </TableCell>
 
-                                <TableCell>
-                                    <MatrixSelect
-                                        value={ticket.dev_id}
-                                        onValueChange={(val: string) => handleStatusChange(ticket.id, 'dev_id', val)}
-                                        options={developers.map(d => ({ label: d.name, value: d.id }))}
-                                        placeholder="Dev"
-                                    />
+                                <TableCell className="text-sm">
+                                    {ticket.ticket_developers?.map((td: any) => td.developers?.name).join(', ') || "-"}
                                 </TableCell>
 
                                 <TableCell>
@@ -514,7 +510,7 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
             ticket_url: formData.get('ticket_url') || null,
             status_id: formData.get('status_id') || null,
             qa_status_id: formData.get('qa_status_id') || null,
-            dev_id: formData.get('dev_id') || null,
+            dev_ids: formData.getAll('dev_ids'),
             team_id: formData.get('team_id') || null,
             environment_id: formData.get('environment_id') || null,
             release_id: formData.get('release_id') || null,
@@ -587,12 +583,13 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label htmlFor="dev_id">Desarrollador</Label>
-                            <Select name="dev_id">
-                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                                <SelectContent>
-                                    {developers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <ReactSelect
+                                name="dev_ids"
+                                isMulti
+                                placeholder="Seleccionar"
+                                className="text-sm"
+                                options={developers.map((s: any) => ({ label: s.name, value: s.id }))}
+                            />
                         </div>
                         <div className="grid gap-1.5">
                             <Label htmlFor="team_id">Equipo</Label>
@@ -635,7 +632,7 @@ function EditTicketDialog({ open, onOpenChange, ticket, statuses, qaStatuses, de
             ticket_url: formData.get('ticket_url') || null,
             status_id: formData.get('status_id') || null,
             qa_status_id: formData.get('qa_status_id') || null,
-            dev_id: formData.get('dev_id') || null,
+            dev_ids: formData.getAll('dev_ids'),
             team_id: formData.get('team_id') || null,
             environment_id: formData.get('environment_id') || null,
             release_id: formData.get('release_id') || null,
@@ -710,12 +707,21 @@ function EditTicketDialog({ open, onOpenChange, ticket, statuses, qaStatuses, de
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label htmlFor="dev_id">Desarrollador</Label>
-                            <Select name="dev_id" defaultValue={ticket.dev_id || undefined}>
-                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                                <SelectContent>
-                                    {developers.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <ReactSelect
+                                name="dev_ids"
+                                isMulti
+                                placeholder="Seleccionar"
+                                className="text-sm"
+                                defaultValue={
+                                    ticket.ticket_developers
+                                        ? ticket.ticket_developers.map((td: any) => ({
+                                            label: td.developers?.name,
+                                            value: td.developers?.id
+                                        }))
+                                        : []
+                                }
+                                options={developers.map((s: any) => ({ label: s.name, value: s.id }))}
+                            />
                         </div>
                         <div className="grid gap-1.5">
                             <Label htmlFor="team_id">Equipo</Label>
