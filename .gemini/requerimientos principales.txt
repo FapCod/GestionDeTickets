@@ -121,6 +121,7 @@ CREATE TABLE public.tickets (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   release_id uuid NOT NULL,
+  ticket_url text,
   CONSTRAINT tickets_pkey PRIMARY KEY (id),
   CONSTRAINT tickets_status_id_fkey FOREIGN KEY (status_id) REFERENCES public.statuses(id),
   CONSTRAINT tickets_qa_status_id_fkey FOREIGN KEY (qa_status_id) REFERENCES public.statuses(id),
