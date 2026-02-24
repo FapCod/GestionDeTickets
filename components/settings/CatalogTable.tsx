@@ -387,6 +387,7 @@ export default function CatalogTable({ data, columns, tableName, title, customAc
                         defaultValues={editingItem}
                         onSuccess={() => setIsOpen(false)}
                         customActions={customActions}
+                        fullData={data}
                     />
                 </DialogContent>
             </Dialog>
@@ -430,7 +431,7 @@ function SortableRow({ row, columns }: { row: any, columns: Column[] }) {
     )
 }
 
-function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActions }: any) {
+function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActions, fullData }: any) {
     const { register, handleSubmit, control } = useForm({
         defaultValues: defaultValues || {}
     })
@@ -441,13 +442,24 @@ function CatalogForm({ columns, tableName, defaultValues, onSuccess, customActio
         const cleanData: any = {}
         columns.forEach((col: any) => {
             if (data[col.key] !== undefined) {
-                cleanData[col.key] = data[col.key]
+                // Treat empty strings as null for optional fields (like email)
+                cleanData[col.key] = data[col.key] === '' ? null : data[col.key]
             }
             // Audit: Ensure technical_notes is included for 'note' type columns
             if (col.type === 'note' && data.technical_notes !== undefined) {
-                cleanData.technical_notes = data.technical_notes
+                cleanData.technical_notes = data.technical_notes === '' ? null : data.technical_notes
             }
         })
+
+        // Special logic for 'components' sort_order
+        if (tableName === 'components' && !defaultValues?.id) {
+            const moduleComponents = (fullData || []).filter((c: any) => c.module_id === cleanData.module_id)
+            const maxSortOrder = moduleComponents.length > 0
+                ? Math.max(...moduleComponents.map((c: any) => c.sort_order || 0))
+                : -1 // Start at 0 if empty
+
+            cleanData.sort_order = maxSortOrder + 1
+        }
 
         let res
         if (defaultValues?.id) {

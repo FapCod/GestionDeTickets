@@ -39,7 +39,7 @@ CREATE TABLE public.components (
   name text NOT NULL,
   module_id uuid NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
-  sort_order integer NOT NULL,
+  sort_order integer NOT NULL DEFAULT 0,
   technical_notes text,
   CONSTRAINT components_pkey PRIMARY KEY (id),
   CONSTRAINT components_module_id_fkey FOREIGN KEY (module_id) REFERENCES public.modules(id)
@@ -55,7 +55,7 @@ CREATE TABLE public.developer_modules (
 CREATE TABLE public.developers (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   name text NOT NULL,
-  email text UNIQUE,
+  email text,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT developers_pkey PRIMARY KEY (id)
 );
