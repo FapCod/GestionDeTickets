@@ -75,6 +75,11 @@ export default function TicketMatrix({
     defaultReleaseId
 }: TicketMatrixProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+
+    const handleRowClick = (ticketId: string) => {
+        setSelectedTicketId(prev => prev === ticketId ? null : ticketId)
+    }
 
     // Edit Ticket state
     const [isEditOpen, setIsEditOpen] = useState(false)
@@ -161,7 +166,7 @@ export default function TicketMatrix({
         if (!tickets || tickets.length === 0) return;
 
         // 1. Preparar los datos
-        const headers = ["Ticket", "Descripción", "Dev", "Equipo", "Entorno"];
+        const headers = ["Ticket", "Descripción", "Dev", "Equipo", "Entorno", "Componentes"];
 
         const plainRows: string[] = [];
         const htmlRows: string[] = [];
@@ -174,8 +179,19 @@ export default function TicketMatrix({
             const equipo = ticket.teams?.name || "-";
             const entorno = ticket.environments?.name || "-";
 
+            // Buscamos en la matriz qué componentes aplican para este ticket
+            const appliedComponents = components
+                .filter(c => {
+                    if (c.name === 'COMMENTS') return false;
+                    const entry = getMatrixEntry(ticket.id, c.id);
+                    return entry?.applies === true;
+                })
+                .map(c => c.name);
+
+            const componentesStr = appliedComponents.length > 0 ? appliedComponents.join(', ') : "-";
+
             // Fila para texto plano (TSV)
-            plainRows.push([title, desc, dev, equipo, entorno].join("\t"));
+            plainRows.push([title, desc, dev, equipo, entorno, componentesStr].join("\t"));
 
             // Fila para HTML
             htmlRows.push(`
@@ -185,6 +201,7 @@ export default function TicketMatrix({
                     <td style="border: 1px solid #ccc; padding: 8px;">${dev}</td>
                     <td style="border: 1px solid #ccc; padding: 8px;">${equipo}</td>
                     <td style="border: 1px solid #ccc; padding: 8px;">${entorno}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${componentesStr}</td>
                 </tr>
             `);
         });
@@ -269,8 +286,18 @@ export default function TicketMatrix({
                     </TableHeader>
                     <TableBody>
                         {tickets.map(ticket => (
-                            <TableRow key={ticket.id}>
-                                <TableCell className="relative group">
+                            <TableRow
+                                key={ticket.id}
+                                onClick={() => handleRowClick(ticket.id)}
+                                className={cn(
+                                    "cursor-pointer transition-colors hover:bg-gray-50",
+                                    selectedTicketId === ticket.id && "bg-blue-200/70 hover:bg-blue-200"
+                                )}
+                            >
+                                <TableCell className={cn(
+                                    "relative group",
+                                    selectedTicketId === ticket.id && "border-l-4 border-l-blue-500"
+                                )}>
                                     <div className="flex flex-col gap-0.5">
                                         <div className="flex items-center justify-between gap-1">
                                             {ticket.ticket_url ? (
