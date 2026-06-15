@@ -25,9 +25,10 @@ export async function updateSession(request: NextRequest) {
                             headers: request.headers,
                         },
                     })
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        response.cookies.set(name, value, options)
-                    )
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        const { maxAge, expires, ...sessionOptions } = options;
+                        response.cookies.set(name, value, sessionOptions)
+                    })
                 },
             },
         }

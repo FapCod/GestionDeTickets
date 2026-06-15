@@ -37,8 +37,8 @@ export function MobileNav({ modules }: { modules: any[] }) {
                     <SmartLink
                         href={dashboardHref}
                         className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                            pathname === dashboardHref ? "bg-muted text-primary" : "text-muted-foreground"
+                            "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary dark:hover:text-foreground",
+                            pathname === dashboardHref ? "bg-muted text-primary dark:text-foreground" : "text-muted-foreground"
                         )}
                         onClick={() => setOpen(false)}
                     >
@@ -47,8 +47,8 @@ export function MobileNav({ modules }: { modules: any[] }) {
                     <SmartLink
                         href="/settings"
                         className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                            pathname.startsWith("/settings") ? "bg-muted text-primary" : "text-muted-foreground"
+                            "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary dark:hover:text-foreground",
+                            pathname.startsWith("/settings") ? "bg-muted text-primary dark:text-foreground" : "text-muted-foreground"
                         )}
                         onClick={() => setOpen(false)}
                     >
@@ -65,8 +65,8 @@ export function MobileNav({ modules }: { modules: any[] }) {
                             key={m.id}
                             href={`/dashboard/${m.id}`}
                             className={cn(
-                                "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                                pathname === `/dashboard/${m.id}` ? "bg-muted text-primary" : "text-muted-foreground"
+                                "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary dark:hover:text-foreground",
+                                pathname === `/dashboard/${m.id}` ? "bg-muted text-primary dark:text-foreground" : "text-muted-foreground"
                             )}
                             onClick={() => setOpen(false)}
                         >

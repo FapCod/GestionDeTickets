@@ -290,8 +290,8 @@ export default function TicketMatrix({
                                 key={ticket.id}
                                 onClick={() => handleRowClick(ticket.id)}
                                 className={cn(
-                                    "cursor-pointer transition-colors hover:bg-gray-50",
-                                    selectedTicketId === ticket.id && "bg-blue-200/70 hover:bg-blue-200"
+                                    "cursor-pointer transition-colors hover:bg-muted/50",
+                                    selectedTicketId === ticket.id && "bg-blue-500/15 hover:bg-blue-500/25 dark:bg-blue-500/25 dark:hover:bg-blue-500/35"
                                 )}
                             >
                                 <TableCell className={cn(
@@ -427,8 +427,8 @@ export default function TicketMatrix({
                                                 className={cn(
                                                     "cursor-pointer w-full h-8 rounded flex items-center justify-center text-xs font-bold transition-colors select-none",
                                                     applies
-                                                        ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-300"
-                                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                                        ? "bg-green-100 text-green-700 hover:bg-green-200 border border-green-300 dark:bg-green-950/60 dark:text-green-400 dark:border-green-800/80 dark:hover:bg-green-900/60"
+                                                        : "bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-900/60 dark:text-slate-500 dark:hover:bg-slate-800/60"
                                                 )}
                                             >
                                                 {applies ? 'APLICA' : 'N/A'}

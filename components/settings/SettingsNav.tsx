@@ -24,9 +24,9 @@ export function SettingsNav() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                        "font-medium transition-colors hover:text-primary",
+                        "font-medium transition-colors hover:text-primary dark:hover:text-foreground",
                         pathname === item.href || pathname.startsWith(item.href)
-                            ? "font-semibold text-primary"
+                            ? "font-semibold text-primary dark:text-foreground"
                             : ""
                     )}
                 >

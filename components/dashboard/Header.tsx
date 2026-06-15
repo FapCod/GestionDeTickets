@@ -6,6 +6,7 @@ import { Ticket } from "lucide-react"
 import { MobileNav } from "@/components/dashboard/MobileNav"
 import { UserNav } from "@/components/dashboard/UserNav"
 import { usePathname } from "next/navigation"
+import { ThemeToggle } from "@/components/ui/ThemeToggle"
 
 interface HeaderProps {
     modules: any[]
@@ -56,6 +57,7 @@ export function Header({ modules }: HeaderProps) {
                 <div className="ml-auto flex-1 sm:flex-initial">
                     {/* Search or other controls */}
                 </div>
+                <ThemeToggle />
                 <UserNav />
             </div>
         </header>

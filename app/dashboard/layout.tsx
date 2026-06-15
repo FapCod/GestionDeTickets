@@ -1,6 +1,7 @@
 import { Header } from "@/components/dashboard/Header"
 import { getCatalog } from "@/actions/catalogs"
 import { SmartLink } from "@/components/SmartLink"
+import { SessionGuard } from "@/components/auth/SessionGuard"
 
 export default async function DashboardLayout({
     children,
@@ -13,6 +14,7 @@ export default async function DashboardLayout({
 
     return (
         <div className="flex min-h-screen w-full flex-col">
+            <SessionGuard />
             <Header modules={modules} />
             <div className="flex flex-1">
                 <aside className="hidden w-[200px] flex-col border-r bg-muted/40 md:flex">
@@ -22,8 +24,8 @@ export default async function DashboardLayout({
                             <SmartLink
                                 key={m.id}
                                 href={`/dashboard/${m.id}`}
-                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted"
-                                activeClassName="bg-muted text-primary font-semibold"
+                                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary dark:hover:text-foreground hover:bg-muted"
+                                activeClassName="bg-muted text-primary dark:text-foreground font-semibold"
                             >
                                 {m.name}
                             </SmartLink>

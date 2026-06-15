@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { CardContent, CardFooter } from '@/components/ui/card'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useFormStatus } from 'react-dom'
+import { useEffect } from 'react'
 
 function SubmitButton() {
     const { pending } = useFormStatus()
@@ -21,8 +22,19 @@ function SubmitButton() {
 export default function LoginForm({ error }: { error?: string }) {
     const [showPassword, setShowPassword] = useState(false)
 
+    useEffect(() => {
+        // Limpiar flags de sesión activa al entrar al login
+        sessionStorage.removeItem('sb-session-active')
+        document.cookie = "x-session-active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;"
+    }, [])
+
+    const handleSubmit = () => {
+        sessionStorage.setItem('sb-session-active', 'true')
+        document.cookie = "x-session-active=true; path=/; SameSite=Lax"
+    }
+
     return (
-        <form action={login}>
+        <form action={login} onSubmit={handleSubmit}>
             <CardContent className="grid gap-4">
                 <div className="grid gap-2">
                     <Label htmlFor="email">Correo Electrónico</Label>
