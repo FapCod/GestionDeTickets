@@ -191,9 +191,6 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    transition: background-color 0.25s ease,
-                border-color 0.25s ease,
-                color 0.15s ease;
   }
 
   ::selection {
@@ -218,6 +215,59 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  body,
+  header,
+  aside,
+  main,
+  section,
+  .card,
+  [class*="bg-card"],
+  [class*="bg-background"],
+  [class*="bg-muted"],
+  table,
+  thead,
+  tbody,
+  tr,
+  th,
+  td,
+  nav,
+  input,
+  select,
+  textarea {
+    transition: background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* ==========================================================================
+   Efecto de Velo Circular (View Transitions API) al alternar tema
+   ========================================================================== */
+::view-transition-group(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  animation: veil-reveal 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  mix-blend-mode: normal;
+  z-index: 9999;
+}
+
+@keyframes veil-reveal {
+  from {
+    clip-path: circle(0px at var(--veil-x, 90%) var(--veil-y, 30px));
+  }
+  to {
+    clip-path: circle(var(--veil-r, 150vmax) at var(--veil-x, 90%) var(--veil-y, 30px));
   }
 }
 

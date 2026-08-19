@@ -32,10 +32,11 @@ export function UserNav() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="relative h-10 w-10 rounded-full overflow-hidden">
-                    <Avatar className="h-full w-full">
-                        <AvatarImage src="" alt="User" />
-                        <AvatarFallback className="bg-primary text-primary-foreground font-bold">{fallbackLetter}</AvatarFallback>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0 hover:opacity-85 transition-opacity">
+                    <Avatar className="h-9 w-9 border border-border/70 shadow-xs">
+                        <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center select-none">
+                            {fallbackLetter}
+                        </AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>

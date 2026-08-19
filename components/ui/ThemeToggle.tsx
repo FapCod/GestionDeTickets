@@ -8,7 +8,7 @@ export function ThemeToggle() {
   return (
     <Button
       variant="ghost"
-      onClick={toggleTheme}
+      onClick={(e) => toggleTheme(e)}
       aria-label="Cambiar tema"
       title={theme === 'dark' ? 'Activar modo claro' : 'Activar modo azul marino'}
       className="flex items-center gap-2 px-3 hover:bg-muted/50 rounded-md h-9"
