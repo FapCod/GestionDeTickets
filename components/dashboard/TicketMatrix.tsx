@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useOptimistic, startTransition } from 'react'
+import { useState, useEffect, useOptimistic, startTransition } from 'react'
 import {
     Table,
     TableBody,
@@ -139,7 +139,13 @@ export default function TicketMatrix({
     }
 
     const handleNotesChange = async (ticketId: string, componentId: string, notes: string) => {
-        // Optimistically update notes too if desired, but focus is on toggle delay
+        startTransition(() => {
+            setOptimisticMatrix({
+                ticket_id: ticketId,
+                component_id: componentId,
+                notes: notes
+            })
+        })
         const res = await updateComponentNotes(ticketId, componentId, notes)
         if (res.error) toast.error(res.error)
     }
@@ -166,20 +172,36 @@ export default function TicketMatrix({
         if (!tickets || tickets.length === 0) return;
 
         // 1. Preparar los datos
-        const headers = ["Ticket", "Descripción", "Dev", "Equipo", "Entorno", "Componentes"];
+        const headers = ["Ticket", "Descripción", "Dev", "Equipo", "Entorno", "Componentes", "Comentarios"];
 
         const plainRows: string[] = [];
         const htmlRows: string[] = [];
 
-        tickets.forEach(ticket => {
-            const title = ticket.title || "-";
-            // Limpiamos la descripción de saltos de línea y caracteres raros
-            const desc = ticket.description ? ticket.description.replace(/(\r\n|\n|\r)/gm, " ") : "-";
-            const dev = ticket.ticket_developers?.map((td: any) => td.developers?.name).join(', ') || "-";
-            const equipo = ticket.teams?.name || "-";
-            const entorno = ticket.environments?.name || "-";
+        // Helper para escapar caracteres especiales en HTML
+        const escapeHtml = (str: string) =>
+            str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
 
-            // Buscamos en la matriz qué componentes aplican para este ticket
+        const commentsComponent = components.find(c => c.name === 'COMMENTS');
+
+        tickets.forEach(ticket => {
+            const rawTitle = ticket.title || "-";
+            const ticketUrl = ticket.ticket_url ? ticket.ticket_url.trim() : "";
+            const normalizedUrl = ticketUrl
+                ? (ticketUrl.startsWith('http://') || ticketUrl.startsWith('https://') ? ticketUrl : `https://${ticketUrl}`)
+                : "";
+
+            // Limpiamos la descripción de saltos de línea y caracteres raros
+            const rawDesc = ticket.description ? ticket.description.replace(/(\r\n|\n|\r)/gm, " ").trim() : "-";
+            const rawDev = ticket.ticket_developers?.map((td: any) => td.developers?.name).filter(Boolean).join(', ') || "-";
+            const rawEquipo = ticket.teams?.name || "-";
+            const rawEntorno = ticket.environments?.name || "-";
+
+            // Buscamos en la matriz qué componentes aplican para este ticket (excluyendo COMMENTS)
             const appliedComponents = components
                 .filter(c => {
                     if (c.name === 'COMMENTS') return false;
@@ -188,20 +210,39 @@ export default function TicketMatrix({
                 })
                 .map(c => c.name);
 
-            const componentesStr = appliedComponents.length > 0 ? appliedComponents.join(', ') : "-";
+            const rawComponentesStr = appliedComponents.length > 0 ? appliedComponents.join(', ') : "-";
+
+            // Buscamos notas / comentarios
+            const commentEntry = commentsComponent ? getMatrixEntry(ticket.id, commentsComponent.id) : null;
+            const commentNotes = commentEntry?.notes ? commentEntry.notes.trim() : "";
+            const plainComments = commentNotes ? commentNotes.replace(/(\r\n|\n|\r)/gm, " ") : "-";
 
             // Fila para texto plano (TSV)
-            plainRows.push([title, desc, dev, equipo, entorno, componentesStr].join("\t"));
+            plainRows.push([rawTitle, rawDesc, rawDev, rawEquipo, rawEntorno, rawComponentesStr, plainComments].join("\t"));
+
+            // Elementos para HTML
+            const escapedTitle = escapeHtml(rawTitle);
+            const htmlTitle = normalizedUrl
+                ? `<a href="${encodeURI(normalizedUrl)}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; font-weight: 500;">${escapedTitle}</a>`
+                : `<span style="font-weight: 500;">${escapedTitle}</span>`;
+
+            const htmlDesc = escapeHtml(rawDesc);
+            const htmlDev = escapeHtml(rawDev);
+            const htmlEquipo = escapeHtml(rawEquipo);
+            const htmlEntorno = escapeHtml(rawEntorno);
+            const htmlComponentes = escapeHtml(rawComponentesStr);
+            const htmlComments = commentNotes ? escapeHtml(commentNotes).replace(/(\r\n|\n|\r)/gm, "<br/>") : "-";
 
             // Fila para HTML
             htmlRows.push(`
                 <tr>
-                    <td style="border: 1px solid #ccc; padding: 8px;">${title}</td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">${desc}</td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">${dev}</td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">${equipo}</td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">${entorno}</td>
-                    <td style="border: 1px solid #ccc; padding: 8px;">${componentesStr}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${htmlTitle}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${htmlDesc}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${htmlDev}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${htmlEquipo}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${htmlEntorno}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${htmlComponentes}</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">${htmlComments}</td>
                 </tr>
             `);
         });
@@ -209,9 +250,9 @@ export default function TicketMatrix({
         const tsvText = [headers.join("\t"), ...plainRows].join("\n");
 
         const htmlTable = `
-            <table style="border-collapse: collapse; font-family: sans-serif; width: 100%;">
+            <table style="border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; font-size: 13px; color: #111827;">
                 <thead>
-                    <tr style="background-color: #f3f4f6;">
+                    <tr style="background-color: #f3f4f6; font-weight: 600;">
                         ${headers.map(h => `<th style="border: 1px solid #ccc; padding: 8px; text-align: left;">${h}</th>`).join("")}
                     </tr>
                 </thead>
@@ -520,6 +561,63 @@ function MatrixSelect({ value, onValueChange, options, placeholder }: any) {
     )
 }
 
+/**
+ * Reusable DeveloperMultiSelect with dark/light mode shadcn styles
+ */
+function DeveloperMultiSelect({
+    name = "dev_ids",
+    options,
+    defaultValue,
+    placeholder = "Seleccionar"
+}: {
+    name?: string
+    options: { label: string; value: string }[]
+    defaultValue?: { label: string; value: string }[]
+    placeholder?: string
+}) {
+    return (
+        <ReactSelect
+            name={name}
+            isMulti
+            unstyled
+            placeholder={placeholder}
+            defaultValue={defaultValue}
+            options={options}
+            menuPlacement="auto"
+            menuPosition="absolute"
+            menuShouldScrollIntoView={false}
+            maxMenuHeight={180}
+            classNames={{
+                control: ({ isFocused }) => cn(
+                    "flex min-h-9 w-full rounded-md border border-input bg-transparent dark:bg-input/30 px-3 py-1 text-sm shadow-xs transition-colors outline-none",
+                    isFocused ? "border-ring ring-[3px] ring-ring/50" : "hover:border-input/80 dark:hover:bg-input/50"
+                ),
+                placeholder: () => "text-muted-foreground text-sm",
+                input: () => "text-foreground text-sm m-0 p-0",
+                valueContainer: () => "flex flex-wrap gap-1 items-center",
+                multiValue: () => "bg-muted text-foreground rounded-md px-2 py-0.5 text-xs flex items-center gap-1 border border-border",
+                multiValueLabel: () => "text-xs font-medium text-foreground",
+                multiValueRemove: () => "text-muted-foreground hover:text-destructive hover:bg-destructive/20 rounded p-0.5 cursor-pointer transition-colors",
+                menu: () => "absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden",
+                menuList: () => "p-1 max-h-44 overflow-y-auto text-sm [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50",
+                option: ({ isFocused, isSelected }) => cn(
+                    "cursor-pointer rounded-sm px-2.5 py-1.5 text-sm outline-none select-none transition-colors",
+                    isSelected
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : isFocused
+                            ? "bg-accent text-accent-foreground"
+                            : "text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+                ),
+                noOptionsMessage: () => "p-3 text-center text-sm text-muted-foreground",
+                dropdownIndicator: () => "text-muted-foreground hover:text-foreground p-1 cursor-pointer",
+                clearIndicator: () => "text-muted-foreground hover:text-destructive p-1 cursor-pointer",
+                indicatorsContainer: () => "flex items-center gap-1",
+                indicatorSeparator: () => "bg-border my-1 w-[1px]"
+            }}
+        />
+    )
+}
+
 function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, developers, teams, environments, releases, defaultReleaseId }: any) {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -610,11 +708,9 @@ function CreateTicketDialog({ open, onOpenChange, statuses, qaStatuses, develope
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label htmlFor="dev_id">Desarrollador</Label>
-                            <ReactSelect
+                            <DeveloperMultiSelect
                                 name="dev_ids"
-                                isMulti
                                 placeholder="Seleccionar"
-                                className="text-sm"
                                 options={developers.map((s: any) => ({ label: s.name, value: s.id }))}
                             />
                         </div>
@@ -734,11 +830,9 @@ function EditTicketDialog({ open, onOpenChange, ticket, statuses, qaStatuses, de
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-1.5">
                             <Label htmlFor="dev_id">Desarrollador</Label>
-                            <ReactSelect
+                            <DeveloperMultiSelect
                                 name="dev_ids"
-                                isMulti
                                 placeholder="Seleccionar"
-                                className="text-sm"
                                 defaultValue={
                                     ticket.ticket_developers
                                         ? ticket.ticket_developers.map((td: any) => ({
